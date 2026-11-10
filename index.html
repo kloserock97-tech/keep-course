@@ -114,12 +114,12 @@ body.bare { background: #fff; }
 /* дело сделано — рука уходит тем же путём, каким пришла */
 .art[data-state="placed"] .hand-move { opacity: 0; transform: translate(-56px, -64px); transition: transform 640ms var(--ease-in-out) 160ms, opacity 260ms ease 420ms; }
 
-/* цикл покоя: покачивание и раз в шесть секунд короткий «примеряющий» наклон к пустому кружку */
+/* цикл покоя: покачивание и раз в шесть секунд рука опускает галочку на полпути к пустому кружку */
 @keyframes float {
   0%, 100% { transform: translate(0, -2.5px) rotate(-.9deg); }
-  36% { transform: translate(0, 2.5px) rotate(.9deg); }
-  50% { transform: translate(6px, 12px) rotate(.3deg); }
-  64% { transform: translate(0, 2px) rotate(.7deg); }
+  40% { transform: translate(0, 2.5px) rotate(.9deg); }
+  50%, 53% { transform: translate(11px, 24px) rotate(.2deg); }
+  66% { transform: translate(0, 2px) rotate(.7deg); }
 }
 .hand-float { position: absolute; inset: 0; transform-origin: 80px 40px; }
 .art:is([data-state="idle"], [data-state="placing"], [data-state="placed"]) .hand-float { animation: float 6s ease-in-out infinite; }
@@ -137,7 +137,7 @@ body.bare { background: #fff; }
 .art[data-state="placed"] .held, .art[data-state="rearm"] .held { opacity: 0; }
 
 .glow-wrap { transition: opacity 180ms ease, transform 180ms var(--ease-out); }
-@keyframes breathe { from { opacity: .7; transform: scale(.97); } to { opacity: 1; transform: scale(1.05); } }
+@keyframes breathe { from { opacity: .88; transform: scale(.99); } to { opacity: 1; transform: scale(1.02); } }   /* свечение почти не дышит: внимание должно уходить вниз, к кнопке */
 .glow { animation: breathe 2.4s ease-in-out infinite alternate; }
 .art[data-state="placed"] .glow-wrap, .art[data-state="rearm"] .glow-wrap { opacity: 0; transform: scale(1.3); }
 
@@ -148,7 +148,7 @@ body.bare { background: #fff; }
 .ball div { width: 100%; height: 100%; }
 .ball div div { position: relative; }
 /* в полёте у мяча своё свечение: белый шар на белом иначе теряется */
-.ball div div::before { content: ""; position: absolute; inset: -16px; border-radius: 50%; background: radial-gradient(closest-side, rgba(56, 220, 160, .7) 45%, rgba(56, 220, 160, .28) 72%, rgba(56, 220, 160, 0) 100%); }
+.ball div div::before { content: ""; position: absolute; inset: -11px; border-radius: 50%; background: radial-gradient(closest-side, rgba(56, 220, 160, .7) 45%, rgba(56, 220, 160, .28) 72%, rgba(56, 220, 160, 0) 100%); }
 .ball img { position: relative; display: block; width: 100%; height: 100%; }
 .cf { position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; opacity: 0; pointer-events: none; }
 
@@ -199,22 +199,21 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
 @media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: #2460e6; } }
 .home { position: absolute; z-index: 1; left: 50%; bottom: 8px; margin-left: -72px; width: 144px; height: 5px; border-radius: 3px; background: #000; }
 
-/* сигнал: круг расходится от галочки в руке — так на входе раскрывается экран, а в покое он раз в шесть секунд доходит до кнопки */
-.ping {
-  position: absolute; z-index: 3; left: 241.75px; top: 285.15px; width: 60px; height: 60px; margin: -30px; border-radius: 50%;
-  border: 1.5px solid rgba(70, 200, 215, .7); box-shadow: 0 0 14px rgba(70, 200, 215, .35), inset 0 0 14px rgba(70, 200, 215, .25);
-  opacity: 0; pointer-events: none;
-}
-@keyframes ping { 0%, 50% { opacity: 0; transform: scale(1); } 51% { opacity: .55; } 70%, 100% { opacity: 0; transform: scale(15); } }
-.art[data-state="idle"] ~ .ping { animation: ping 6s var(--ease-out) infinite; }
-/* кнопка отвечает бликом, когда сигнал до неё доходит */
+/* Репетиция нажатия. Раз в шесть секунд рука опускает галочку на полпути к кружку,
+   и кнопка в тот же миг продавливается, будто её нажали. Два предмета двигаются вместе — глаз их связывает. */
+.btn-wrap { transform-origin: 50% 50%; }
 .btn-primary { position: relative; overflow: hidden; }
-.btn-primary::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-130%);
-  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .34) 50%, rgba(255, 255, 255, 0) 70%);
-}
-@keyframes sheen { 0%, 62% { transform: translateX(-130%); } 76%, 100% { transform: translateX(130%); } }
-.art[data-state="idle"] ~ .sheet .btn-primary::after { animation: sheen 6s ease-in-out infinite; }
+.btn-primary::after { content: ""; position: absolute; inset: 0; background: #0b2f8f; opacity: 0; pointer-events: none; }
+@keyframes rehearse { 0%, 43%, 66%, 100% { transform: none; } 50%, 53% { transform: scale(.955); } 60% { transform: scale(1.012); } }
+@keyframes rehearse-shade { 0%, 43%, 60%, 100% { opacity: 0; } 50%, 53% { opacity: .16; } }
+.art[data-state="idle"] ~ .sheet .btn-wrap { animation: rehearse 6s ease-in-out infinite; }
+.art[data-state="idle"] ~ .sheet .btn-primary::after { animation: rehearse-shade 6s ease-in-out infinite; }
+
+/* капля: отделяется от пойманного мяча, падает вниз и становится кнопкой */
+.drop { position: absolute; z-index: 6; left: 0; top: 0; width: 48px; height: 48px; margin: -24px; border-radius: 50%; background: var(--blue); opacity: 0; pointer-events: none; }
+/* строки текста выезжают из-за своей нижней кромки — со стороны кнопки */
+.ln { display: block; overflow: hidden; padding-bottom: 3px; margin-bottom: -3px; }
+.ln > span { display: block; }
 
 .replay {
   position: fixed; right: 20px; bottom: 20px; padding: 10px 16px; border-radius: 999px; border: 0;
@@ -225,7 +224,7 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
 .no-anim, .no-anim * { transition: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cloud img, .dot img, .hand-float, .glow, .ring-4 img, .ping, .btn-primary::after { animation: none !important; }
+  .cloud img, .dot img, .hand-float, .glow, .ring-4 img, .btn-wrap, .btn-primary::after { animation: none !important; }
   .in, .hand-move, .token-4 { transform: none !important; }
   .art[data-state="placed"] .ripple, .art[data-state="placed"] .ring-5, .art[data-state="placed"] .dot { animation: none; }
 }
@@ -276,7 +275,6 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
         </div>
         <div class="l ball"><div><div><img src="assets/art/token-held.webp" alt=""></div></div></div>
       </div>
-      <div class="ping" aria-hidden="true"></div>
 
       <img class="aura" src="assets/ui/ellipse.svg" alt="">
 
@@ -292,21 +290,22 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
 
       <section class="sheet">
         <div class="copy">
-          <h1>Поможем сохранить курс</h1>
-          <p>Итоги недели, ваш прогресс и<br>рекомендации будут приходить, даже<br>когда приложение закрыто. Управлять<br>уведомлениями можно в профиле.</p>
+          <h1><span class="ln"><span>Поможем сохранить курс</span></span></h1>
+          <p><span class="ln"><span>Итоги недели, ваш прогресс и</span></span><span class="ln"><span>рекомендации будут приходить, даже</span></span><span class="ln"><span>когда приложение закрыто. Управлять</span></span><span class="ln"><span>уведомлениями можно в профиле.</span></span></p>
         </div>
         <div class="actions">
-          <button class="btn btn-primary" id="connect" type="button">
+          <div class="btn-wrap"><button class="btn btn-primary" id="connect" type="button">
             <span class="ask">Подключить</span>
             <span class="done" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5l3.6 3.5 7.4-8" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               Подключено
             </span>
-          </button>
+          </button></div>
           <button class="btn" id="later" type="button">Позже</button>
         </div>
       </section>
       <div class="home" aria-hidden="true"></div>
+      <div class="drop" aria-hidden="true"></div>
       </div>
       <section class="stats" id="stats" aria-label="Статистика"></section>
     </main>
@@ -372,8 +371,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   };
 
   // Появление. Белый мяч — сегодняшняя галочка — скачет по трём дням, и каждый становится отмеченным.
-  // На четвёртом прыжке он взлетает слишком высоко, и его ловит рука. От места, где поймали, расходится круг:
-  // он становится голубым свечением под текстом, и следом за ним проявляются заголовок, текст и кнопки.
+  // На четвёртом прыжке он взлетает слишком высоко, и его ловит рука. От рывка от мяча отделяется синяя капля,
+  // падает вниз и раскрывается в кнопку. Из кнопки строка за строкой выходит текст — последнее движение остаётся у кнопки.
   const enter = () => {
     clear(); stop();
     connect.classList.remove('is-done');
@@ -420,24 +419,33 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
       { transform: 'translate(4px, 7px)', offset: 0.68, easing: 'ease-in-out' }, { transform: 'translate(0, 0)' },
     ], { delay: CATCH - 330, duration: 640 });
     play(art.querySelector('.held'), [{ opacity: 0 }, { opacity: 0, offset: 0.999 }, { opacity: 1 }], { duration: CATCH, fill: 'none' });
-    play(art.querySelector('.glow-wrap'), [{ opacity: 0, transform: 'scale(.8)' }, { opacity: .75, transform: 'scale(.8)', offset: 0.001 }, { opacity: 1, transform: 'none' }], { delay: CATCH - 1, duration: 420, easing: OUT });   // без провала: свечение мяча переходит в свечение в руке
+    play(art.querySelector('.glow-wrap'), [{ opacity: 0 }, { opacity: .8, offset: 0.004 }, { opacity: 1 }], { delay: CATCH - 1, duration: 300 });   // свечение мяча просто переходит в свечение в руке, без вспышки
     play(art.querySelector('.ring-4 .lit'), [{ opacity: 0 }, { opacity: 1 }], { delay: CATCH, duration: 460 });
     play(art.querySelector('.ring-4 .clean'), [{ opacity: 1 }, { opacity: 0 }], { delay: CATCH, duration: 460 });
-    confetti(HELD[0] + 4, HELD[1] - 6, CATCH + 10, 5, 30);
 
-    // от пойманного мяча расходится круг и становится свечением под текстом; за ним проявляется текст
+    play(intro.querySelector('.aura'), [{ opacity: 0 }, { opacity: 1 }], { delay: 150, duration: 700 });
+
+    // капля от мяча падает вниз и становится кнопкой
     const s = +getComputedStyle(document.documentElement).getPropertyValue('--s') || 1;
-    const aura = intro.querySelector('.aura'), ar = aura.getBoundingClientRect(), io = intro.getBoundingClientRect();
-    const dx = 2 + HELD[0] - (ar.left + ar.width / 2 - io.left) / s, dy = 111.4 + HELD[1] - (ar.top + ar.height / 2 - io.top) / s;
-    play(aura, [{ opacity: 0, transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(.06)` }, { opacity: 1, transform: 'none' }], { delay: CATCH, duration: 780, easing: OUT });
-    play(intro.querySelector('.ping'), [{ opacity: .7, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(15)' }], { delay: CATCH + 30, duration: 1000, easing: OUT, fill: 'none' });
-    const rise = (el, delay) => play(el, [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { delay: CATCH + delay, duration: 420, easing: OUT });
-    rise(intro.querySelector('h1'), 130);
-    rise(intro.querySelector('.copy p'), 200);
-    rise(connect, 270);
-    rise(document.getElementById('later'), 340);
+    const io = intro.getBoundingClientRect(), br = connect.getBoundingClientRect();
+    const B = [(br.left + br.width / 2 - io.left) / s, (br.top + br.height / 2 - io.top) / s], G = [2 + HELD[0], 111.4 + HELD[1]];
+    const FALL = 300, HIT = CATCH + 50 + FALL, drop = intro.querySelector('.drop');
+    play(drop, [
+      { opacity: 0, transform: `translate(${G[0]}px, ${G[1]}px) scale(.5)`, easing: 'cubic-bezier(.5, 0, .85, .45)' },
+      { opacity: 1, offset: 0.18 },
+      { opacity: 1, transform: `translate(${B[0].toFixed(1)}px, ${B[1].toFixed(1)}px) scale(1)`, offset: 0.99 },
+      { opacity: 0, transform: `translate(${B[0].toFixed(1)}px, ${B[1].toFixed(1)}px) scale(1)` },
+    ], { delay: CATCH + 50, duration: FALL, fill: 'none' });
+    play(connect, [{ opacity: 0 }, { opacity: 0, offset: 0.999 }, { opacity: 1 }], { duration: HIT, fill: 'none' });
+    play(connect, [{ clipPath: 'inset(0 calc(50% - 24px) round 24px)' }, { clipPath: 'inset(0 0% round 16px)' }], { delay: HIT, duration: 360, easing: OUT });
+    play(connect.parentElement, [{ transform: 'scale(1.08, .74)' }, { transform: 'scale(.985, 1.08)', offset: 0.42 }, { transform: 'scale(1.005, .985)', offset: 0.72 }, { transform: 'none' }], { delay: HIT, duration: 440, fill: 'none', easing: 'ease-out' });
+    play(connect.querySelector('.ask'), [{ opacity: 0 }, { opacity: 1 }], { delay: HIT + 160, duration: 200 });
+    // текст выходит из кнопки: сначала ближняя к ней строка, заголовок последним
+    const lines = [...intro.querySelectorAll('.copy .ln > span')].reverse();
+    lines.forEach((el, i) => play(el, [{ transform: 'translateY(108%)' }, { transform: 'none' }], { delay: HIT + 90 + i * 55, duration: 460, easing: OUT }));
+    play(document.getElementById('later'), [{ opacity: 0, transform: 'translateY(-12px)' }, { opacity: 1, transform: 'none' }], { delay: HIT + 220, duration: 380, easing: OUT });
 
-    later(() => set('idle'), CATCH + 300);
+    later(() => set('idle'), HIT + 120);
   };
   // нажатие во время появления пропускает его
   intro.addEventListener('pointerdown', () => { if (art.dataset.state !== 'enter') return; anims.forEach((a) => { try { a.finish(); } catch (e) { /* бесконечных тут нет */ } }); clear(); set('idle'); });
@@ -461,7 +469,16 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
 
   connect.addEventListener('click', place);
   // «Позже»: рука уходит, экран закрывается
-  document.getElementById('later').addEventListener('click', () => { if (art.dataset.state !== 'idle') return; clear(); set('rearm'); if (params.has('stay')) later(() => set('idle'), 1300); else later(() => view('stats'), 420); });
+  document.getElementById('later').addEventListener('click', () => {
+    if (art.dataset.state !== 'idle') return;
+    clear(); set('rearm');
+    if (params.has('stay')) { later(() => set('idle'), 1300); return; }
+    if (!calm) {   // выход зеркалит вход: строки уходят обратно за кромку, кнопка сжимается
+      [...intro.querySelectorAll('.copy .ln > span')].forEach((el, i) => play(el, [{ transform: 'none' }, { transform: 'translateY(108%)' }], { delay: i * 30, duration: 260, easing: 'ease-in', fill: 'forwards' }));
+      play(connect.parentElement, [{ transform: 'none', opacity: 1 }, { transform: 'scale(.9)', opacity: 0 }], { delay: 120, duration: 240, easing: 'ease-in', fill: 'forwards' });
+    }
+    later(() => view('stats'), 420);
+  });
   document.getElementById('replay').addEventListener('click', enter);
 
   const imgs = [...document.querySelectorAll('.art img, .aura')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
