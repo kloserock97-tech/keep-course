@@ -21,6 +21,11 @@
     { name: 'Творог 5% с ягодами', add: [260, 34, 9, 14], tag: 'лёгкий' },
   ];
 
+  // ?mock — режим сверки с макетом: данные и состав экрана как в исходном макете
+  const MOCK = new URLSearchParams(location.search).has('mock');
+  if (MOCK) { GOAL.f = 48; GOAL.c = 48; Object.assign(WEEK.find((d) => d.today), { meal: [1235, 12, 9, 9], water: 0.8 }); }
+  root.classList.toggle('mock', MOCK);
+
   let day, s, done;
 
   const load = (d) => {
@@ -112,21 +117,21 @@
 
         <div class="card w">
           <div class="w-top"><img src="${A}meal.svg" alt=""><span class="wname">Питание</span></div>
-          <div class="num"><b data-n="kcal">${nf(s.kcal)}</b><span>/ ${nf(GOAL.kcal)} ккал</span><span class="left" data-left="kcal"></span></div>
+          <div class="num"><b data-n="kcal">${nf(s.kcal)}</b><span>/</span><span class="u"><i>${nf(GOAL.kcal)}</i><i>ккал</i></span><span class="left" data-left="kcal"></span></div>
           <div class="bju">
             ${[['p', 'Белки', '#5a4ff5'], ['f', 'Жиры', '#9245f0'], ['c', 'Углеводы', '#f17c59']].map(([k, label, c]) => `
-            <div style="--c:${c}"><p>${label}</p><div class="bar"><b data-bar="${k}"></b></div><strong><i data-n="${k}" style="font-style:normal">${s[k]}</i><span> / ${GOAL[k]} г</span></strong></div>`).join('')}
+            <div style="--c:${c}"><p>${label}</p><div class="bar"><b data-bar="${k}"></b></div><strong><i data-n="${k}">${s[k]}</i><span>/</span><span>${GOAL[k]}</span><span class="unit">г</span></strong></div>`).join('')}
           </div>
           ${day.today ? '<button class="add" type="button" data-do="meal" aria-label="Записать еду"><img src="' + A + 'plus.svg" alt="" width="17.5" height="17.5"></button>' : ''}
         </div>
 
         <div class="card w">
           <div class="w-top"><img src="${A}fire.svg" alt=""><span class="wname">Активность</span></div>
-          <div class="num"><b data-n="act">${nf(s.act)}</b><span>/ ${GOAL.act} ккал</span></div>
-          <div class="barrow"><div class="bar"><b data-bar="act"></b></div><em data-pct="act"></em></div>
+          <div class="num"><b data-n="act">${nf(s.act)}</b><span>/</span><span class="u"><i>${GOAL.act}</i><i>ккал</i></span></div>
+          <div class="barrow"><div class="bar"><b data-bar="act"></b></div><em><span data-pct="act"></span><span>%</span></em></div>
           <div class="split">
             <div><p><img src="${A}steps-16.svg" alt="" width="16" height="16">Шаги</p><strong data-n="steps">${nf(s.steps)}</strong></div>
-            <div><p><img src="${A}dumbbell.svg" alt="" width="16" height="16">Тренировка</p><strong><i data-n="train" style="font-style:normal">${s.train}</i><span> мин</span></strong></div>
+            <div><p><img src="${A}dumbbell.svg" alt="" width="16" height="16">Тренировка</p><strong><i data-n="train">${s.train}</i><span class="unit">мин</span></strong></div>
           </div>
           ${day.today ? '<button class="add" type="button" data-do="walk" aria-label="Отметить активность"><img src="' + A + 'plus.svg" alt="" width="17.5" height="17.5"></button>' : ''}
         </div>
@@ -134,12 +139,12 @@
         <div class="grid">
           <div class="card tile">
             <div class="w-top"><img src="${A}water.svg" alt=""><span class="wname">Вода</span></div>
-            <div class="num"><b data-n="water">${dec(s.water)}</b><span>/ 2 л</span></div>
+            <div class="num"><b data-n="water">${dec(s.water)}</b><span>/</span><span class="u"><i>2</i><i>л</i></span></div>
             <div class="drops" data-drops></div>
           </div>
           <div class="card tile">
             <div class="w-top"><img src="${A}steps.svg" alt=""><span class="wname">Шаги</span></div>
-            <div class="num"><b data-n="steps">${nf(s.steps)}</b><span>/ 10 000</span></div>
+            <div class="num"><b data-n="steps">${nf(s.steps)}</b><span>/</span><span>10 000</span></div>
             <div class="bar"><b data-bar="steps"></b></div>
           </div>
           <div class="card tile">
@@ -149,7 +154,7 @@
           </div>
           <div class="card tile">
             <div class="w-top"><img src="${A}scales.svg" alt=""><span class="wname">Вес</span></div>
-            <div class="num"><b>68,4</b><span>/ 65 кг</span></div>
+            <div class="num"><b>68,4</b><span>/</span><span class="u"><i>65</i><i>кг</i></span></div>
             <p class="note good">−0,4 кг за неделю</p>
           </div>
         </div>
@@ -175,9 +180,10 @@
   const sync = (animate = true) => {
     if (!animate) Object.keys(shown).forEach((k) => delete shown[k]);
     [['kcal', nf], ['p', nf], ['f', nf], ['c', nf], ['act', nf], ['steps', nf], ['train', nf], ['water', dec]].forEach(([k, f]) => count(k, s[k], f));
+    const MIN = { p: 0.245, f: 0.245, c: 0.245 };   // в макете у БЖУ заливка не короче 24 pt
     const bars = { p: s.p / GOAL.p, f: s.f / GOAL.f, c: s.c / GOAL.c, act: s.act / GOAL.act, steps: s.steps / GOAL.steps, sleep: s.sleep / GOAL.sleep };
-    Object.entries(bars).forEach(([k, v]) => root.querySelectorAll(`[data-bar="${k}"]`).forEach((b) => { b.style.transform = `scaleX(${Math.min(1, v).toFixed(3)})`; }));
-    root.querySelector('[data-pct="act"]').textContent = Math.round(bars.act * 100) + ' %';
+    Object.entries(bars).forEach(([k, v]) => root.querySelectorAll(`[data-bar="${k}"]`).forEach((b) => { b.style.transform = `translateX(${(-(1 - Math.min(1, Math.max(v, MIN[k] && v > 0 ? MIN[k] : 0))) * 100).toFixed(2)}%)`; }));
+    root.querySelector('[data-pct="act"]').textContent = Math.round(bars.act * 100);
     const left = GOAL.kcal - s.kcal;
     root.querySelector('[data-left="kcal"]').textContent = left > 0 ? `осталось ${nf(left)}` : `сверх нормы ${nf(-left)}`;
     root.querySelector('[data-drops]').innerHTML = Array.from({ length: 10 }, (_, i) => `<img src="${A}drop-${i < Math.round(s.water / 0.2) ? 'on' : 'off'}.svg" alt="">`).join('');

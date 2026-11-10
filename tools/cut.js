@@ -27,9 +27,10 @@ const LAYERS = [
   { name: 'token-2', circle: [343, 652, 96], k: 1.6 },
   { name: 'token-3', circle: [517, 625, 93], k: 1.6 },
   { name: 'ring-4', circle: [688, 605, 86], noGreen: true },
+  { name: 'ring-4-lit', circle: [688, 605, 99], feather: 0.695 },
   { name: 'ring-5', circle: [863, 583, 86] },
   { name: 'hand', box: [120, 30, 705, 475], k: 1.6, hand: true,
-    poly: [[120, 30], [340, 30], [705, 290], [705, 475], [418, 475], [405, 372], [300, 275], [120, 140]] },
+    poly: [[120, 30], [300, 30], [400, 95], [520, 190], [690, 300], [705, 330], [705, 475], [418, 475], [410, 400], [340, 340], [250, 250], [120, 150]] },
 ];
 const DOTS = LAYERS.filter((l) => l.name.startsWith('dot')).map((l) => l.circle);
 const HAND_POLY = LAYERS.find((l) => l.hand).poly.map(([x, y]) => [x * P, y * P]);
@@ -64,7 +65,7 @@ function inPoly(x, y, poly) {
     let x0, y0, x1, y1;
     if (L.circle) { const [cx, cy, r] = L.circle; x0 = cx - r; y0 = cy - r; x1 = cx + r; y1 = cy + r; }
     else [x0, y0, x1, y1] = L.box;
-    x0 = Math.round(x0 * P); y0 = Math.round(y0 * P); x1 = Math.min(W, Math.round(x1 * P)); y1 = Math.min(H, Math.round(y1 * P));
+    x0 = Math.floor((x0 * P) / 4) * 4; y0 = Math.floor((y0 * P) / 4) * 4; x1 = Math.min(W, Math.ceil((x1 * P) / 4) * 4); y1 = Math.min(H, Math.ceil((y1 * P) / 4) * 4);
     const w = x1 - x0, h = y1 - y0;
     const out = Buffer.alloc(w * h * 4);
     const k = L.k || 1;
@@ -79,12 +80,13 @@ function inPoly(x, y, poly) {
       if (L.circle) {
         const [cx, cy, R] = L.circle;
         const d = Math.hypot(sx - cx * P, sy - cy * P) / (R * P);
-        m *= 1 - smooth(0.9, 1, d);
+        m *= 1 - smooth(L.feather || 0.9, 1, d);
       }
       if (poly && !inPoly(sx, sy, poly)) m = 0;
       if (L.hand) {
-        m *= smooth(12, 42, b - g);                  // убираем зелёное свечение и бледные облака
         const d = Math.hypot(sx - HELD[0] * P, sy - HELD[1] * P) / (HELD[2] * P);
+        if (d < 2.1) m *= smooth(12, 42, b - g);     // зелёное свечение убираем только рядом с жетоном, иначе тает запястье
+        if (sx < 380 * P && sy > 335 * P) m *= smooth(0.2, 0.35, a);   // край левого облака
         if (d < 1.06) m *= 1 - smooth(158, 186, r);  // убираем сам жетон — он отдельный слой
       }
       if (L.cloud) {                                 // в рамку облака попадают точки и край руки

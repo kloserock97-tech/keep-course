@@ -23,6 +23,7 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
   const Rt = R - 1;
 
   const save = async (name, x0, y0, w, h, fn) => {
+    x0 = Math.floor(x0 / 4) * 4; y0 = Math.floor(y0 / 4) * 4; w = Math.ceil(w / 4) * 4 + 4; h = Math.ceil(h / 4) * 4 + 4;   // края по целым пунктам
     const out = Buffer.alloc(w * h * 4);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const v = fn(x0 + x, y0 + y); if (!v) continue;
@@ -49,6 +50,7 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
     return [...p, 1 - smooth(Rt - 1.2, Rt + 0.6, d)];
   });
 
+  const RING = [688 * 1.56, 605 * 1.56, 99 * 1.56];
   // 3. свечение: только зелёное, без руки, кольца и самого жетона
   const gb = Math.ceil(R * 1.8), gx0 = Math.round(c[0]) - gb, gy0 = Math.round(c[1]) - gb;
   const glowAt = (x, y) => {
@@ -65,6 +67,7 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
     const v = d < R + 3 ? glowAt(c[0] + (dx / (d || 1)) * (R + 5), c[1] + (dy / (d || 1)) * (R + 5)) : glowAt(x, y);
     if (!v) return null;
     v[3] *= 1 - smooth(R * 1.62, R * 1.8, d);
+    v[3] *= smooth(0.695, 1, Math.hypot(x - RING[0], y - RING[1]) / RING[2]);   // у кольца свечение запечено в слой ring-4-lit
     return v;
   });
 

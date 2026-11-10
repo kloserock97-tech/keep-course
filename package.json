@@ -6,7 +6,9 @@
     "cut": "node tools/cut.js",
     "shoot": "node tools/shoot.js",
     "peek": "node tools/peek.js",
-    "cut:held": "node tools/cut-held.js"
+    "cut:held": "node tools/cut-held.js",
+    "place": "node tools/place.js",
+    "diff": "node tools/diff.js && node tools/diff-stats.js"
   },
   "keywords": [],
   "author": "",
