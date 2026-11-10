@@ -74,7 +74,7 @@ function inPoly(x, y, poly) {
       const sx = x0 + x, sy = y0 + y, i = (sy * W + sx) * 3, o = (y * w + x) * 4;
       const r = data[i], g = data[i + 1], b = data[i + 2];
       let a = 1 - Math.min(r, g, b) / 255;          // «цвет в прозрачность» от белого
-      let a2 = Math.min(1, a * k);
+      let a2 = Math.min(1, a * (1 + (k - 1) * smooth(0.3, 0.62, a)));   // уплотняем только насыщенную середину, бледные края остаются мягкими
       let m = 1;                                     // маска слоя
       if (L.circle) {
         const [cx, cy, R] = L.circle;
@@ -85,7 +85,7 @@ function inPoly(x, y, poly) {
       if (L.hand) {
         m *= smooth(12, 42, b - g);                  // убираем зелёное свечение и бледные облака
         const d = Math.hypot(sx - HELD[0] * P, sy - HELD[1] * P) / (HELD[2] * P);
-        if (d < 1.06) m *= 1 - smooth(120, 165, r);  // убираем сам жетон — он отдельный слой
+        if (d < 1.06) m *= 1 - smooth(158, 186, r);  // убираем сам жетон — он отдельный слой
       }
       if (L.cloud) {                                 // в рамку облака попадают точки и край руки
         m *= 1 - smooth(0.26, 0.4, a);

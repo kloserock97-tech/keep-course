@@ -5,7 +5,8 @@
   "scripts": {
     "cut": "node tools/cut.js",
     "shoot": "node tools/shoot.js",
-    "peek": "node tools/peek.js"
+    "peek": "node tools/peek.js",
+    "cut:held": "node tools/cut-held.js"
   },
   "keywords": [],
   "author": "",

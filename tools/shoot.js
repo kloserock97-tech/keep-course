@@ -9,7 +9,7 @@ const ROOT = path.join(__dirname, '..');
 const FRAMES = path.join(ROOT, '.shots', 'frames');
 const URL = require('url').pathToFileURL(path.join(ROOT, 'index.html')).href;
 const FPS = 30;
-const SECONDS = 8.3;      // вход → цикл → «Подключить» → галочка на месте
+const SECONDS = 6.9;      // вход → цикл → «Подключить» → галочка на месте
 const TAP_AT = 4.9;
 
 (async () => {
