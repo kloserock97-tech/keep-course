@@ -26,12 +26,13 @@
   if (MOCK) { GOAL.f = 48; GOAL.c = 48; Object.assign(WEEK.find((d) => d.today), { meal: [1235, 12, 9, 9], water: 0.8 }); }
   root.classList.toggle('mock', MOCK);
 
-  let day, s, done;
+  let day, s, done, popped;
 
   const load = (d) => {
     day = d;
     s = { kcal: d.meal[0], p: d.meal[1], f: d.meal[2], c: d.meal[3], act: d.act[0], train: d.act[1], steps: d.steps, water: d.water, sleep: d.sleep, glasses: 0 };
     done = { meal: false, walk: false, water: false, sleep: false };
+    popped = new Set();
   };
 
   // пять ориентиров дня: доля и закрыт ли
@@ -47,6 +48,13 @@
   };
   const score = (d) => marks({ kcal: d.meal[0], act: d.act[0], water: d.water, steps: d.steps, sleep: d.sleep }).filter((m) => m.ok).length;
 
+  // что сделать следующим: одно дело, самое весомое из оставшихся
+  const NEXT = [
+    ['meal', () => `Начните с ужина: не хватает ${GOAL.p - s.p}\u00A0г белка.`],
+    ['walk', () => 'Дальше прогулка: закроет и активность, и шаги.'],
+    ['water', () => `Осталось выпить воды: ${3 - s.glasses}\u00A0ст.`],
+    ['sleep', () => 'И последнее: лечь до 23:00.'],
+  ];
   const hero = () => {
     const closed = marks().filter((m) => m.ok).length;
     if (!day.today) {
@@ -57,18 +65,20 @@
       };
     }
     const left = Object.values(done).filter((v) => !v).length;
-    const kicker = 'Пятница, 17 сентября · сейчас 20:01';
-    if (left === 4) return { kicker, title: 'День немного отстаёт', sub: 'Четыре шага ниже — и он закрыт.' };
+    const kicker = 'Пятница, 17 сентября · 20:01';
     if (left === 0) return { kicker, title: 'День закрыт', sub: `${closed} из 5 ориентиров. Сон доберёте ночью, напомним в 22:30.` };
-    return { kicker, title: left === 1 ? 'Остался один шаг' : `Осталось ${left} шага`, sub: 'Хорошо идёте. Закройте остальное до сна.' };
+    const next = NEXT.find(([k]) => !done[k])[1]();
+    return { kicker, title: left === 4 ? 'День немного отстаёт' : left === 1 ? 'Остался один шаг' : `Осталось ${left} шага`, sub: next };
   };
 
-  const todos = () => [
-    { key: 'meal', ico: 'meal', title: 'Ужин с белком', sub: done.meal ? done.meal : `Нужно ещё ${GOAL.p - s.p} г белка`, btn: 'Записать' },
-    { key: 'walk', ico: 'steps', title: 'Прогулка 40 минут', sub: done.walk ? '+160 ккал, +4 700 шагов' : 'Закроет активность и шаги', btn: 'Отметить' },
-    { key: 'water', ico: 'water', title: 'Три стакана воды', sub: done.water ? 'Норма воды закрыта' : s.glasses ? `Выпито ${s.glasses} из 3` : 'До нормы осталось 0,6 л', btn: '+ стакан' },
-    { key: 'sleep', ico: 'sleep', title: 'Лечь до 23:00', sub: done.sleep ? 'Напомним в 22:30' : `Прошлой ночью ${hm(s.sleep)}`, btn: 'Напомнить' },
+  // шары: каждое оставшееся дело — шар. Сделал — лопнул. Размер шара — вес дела.
+  const BUBBLES = [
+    { id: 'meal', kind: 'meal', x: 60, y: 84, d: 112, title: 'Ужин', sub: () => `ещё ${GOAL.p - s.p}\u00A0г белка` },
+    { id: 'walk', kind: 'walk', x: 166, y: 58, d: 92, title: 'Прогулка', sub: () => '40 минут' },
+    { id: 'sleep', kind: 'sleep', x: 270, y: 70, d: 86, title: 'Сон', sub: () => 'до 23:00' },
+    { id: 'w1', kind: 'water', x: 150, y: 138, d: 46 }, { id: 'w2', kind: 'water', x: 204, y: 146, d: 46 }, { id: 'w3', kind: 'water', x: 258, y: 140, d: 46 },
   ];
+  const EYES = '<i class="eyes"><b><u></u></b><b><u></u></b></i>';
 
   const check = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5l3.6 3.5 7.4-8" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const R = 20, C = 2 * Math.PI * R;
@@ -85,34 +95,23 @@
         </div>
       </div>
 
-      <div class="card hero">
+      <div class="card coach" data-mood="idle">
+        <div class="blob" aria-hidden="true">${EYES}</div>
         <div class="swap" data-swap>
           <p class="hero-kicker" data-h="kicker">${h.kicker}</p>
           <h3 data-h="title">${h.title}</h3>
           <p class="hero-sub" data-h="sub">${h.sub}</p>
         </div>
-        <div class="marks">${marks().map((m) => `
-          <div class="mark${m.ok ? ' done' : ''}" data-mark="${m.key}">
-            <div class="mark-ring">
-              <svg width="44" height="44" viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="${R}"/><circle class="arc" cx="22" cy="22" r="${R}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - Math.min(1, m.pct))).toFixed(1)}"/></svg>
-              <span class="pct">${Math.round(m.pct * 100)}</span>
-              <span class="ok">${check}</span>
-            </div>
-            ${m.label}
-          </div>`).join('')}
-        </div>
-        <div class="goal"><b>68,4 кг</b><span>→ цель 65 кг</span><span class="down">−0,4 кг за неделю</span></div>
       </div>
 
       <div class="stack">
-        ${day.today ? `<div class="card plan">
+        ${day.today ? `<div class="card pond">
           <div class="plan-top"><h4>Осталось сегодня</h4><span class="plan-count" data-count></span></div>
-          ${todos().map((t) => `
-          <div class="todo" data-todo="${t.key}">
-            <div class="todo-ico"><img src="${A}${t.ico}.svg" alt="" width="20" height="20">${check}</div>
-            <div class="todo-text"><b>${t.title}</b><span data-sub>${t.sub}</span></div>
-            <button class="pill" type="button" data-do="${t.key}">${t.btn}</button>
-          </div>`).join('')}
+          <p class="pond-hint">Сделали — нажмите на шар, он лопнет</p>
+          <div class="pond-field" data-pond>
+            ${BUBBLES.map((b, i) => `<button class="bub bub-${b.kind}${popped.has(b.id) ? ' gone' : ''}" type="button" data-bub="${b.id}" aria-label="${b.title || 'Стакан воды'}" style="left:${b.x - b.d / 2}px;top:${b.y - b.d / 2}px;width:${b.d}px;height:${b.d}px;--t:${4.2 + (i % 3) * 0.7}s;--o:${-i * 0.9}s"><span>${b.title ? `<b>${b.title}</b><small data-bsub="${b.id}">${b.sub()}</small>` : `<img src="${A}drop-on.svg" alt="" width="14" height="14">`}</span></button>`).join('')}
+            <div class="pond-done"><b>Всё на сегодня</b><span>Загляните утром: коуч соберёт план на новый день.</span></div>
+          </div>
         </div>` : ''}
 
         <div class="card w">
@@ -188,52 +187,79 @@
     root.querySelector('[data-left="kcal"]').textContent = left > 0 ? `осталось ${nf(left)}` : `сверх нормы ${nf(-left)}`;
     root.querySelector('[data-drops]').innerHTML = Array.from({ length: 10 }, (_, i) => `<img src="${A}drop-${i < Math.round(s.water / 0.2) ? 'on' : 'off'}.svg" alt="">`).join('');
 
-    marks().forEach((m) => {
-      const el = root.querySelector(`[data-mark="${m.key}"]`);
-      el.classList.toggle('done', m.ok);
-      el.querySelector('.arc').setAttribute('stroke-dashoffset', (C * (1 - Math.min(1, m.pct))).toFixed(1));
-      el.querySelector('.pct').textContent = Math.round(m.pct * 100);
-    });
     if (day.today) {
       const closed = marks().filter((m) => m.ok).length;
       live = closed;
       root.querySelector('[data-score="17"]').style.width = closed * 20 + '%';
-      todos().forEach((t) => {
-        const el = root.querySelector(`[data-todo="${t.key}"]`);
-        el.classList.toggle('done', !!done[t.key]);
-        el.querySelector('[data-sub]').textContent = t.sub;
-      });
       const n = Object.values(done).filter(Boolean).length;
       root.querySelector('[data-count]').textContent = `${n} из 4`;
+      BUBBLES.filter((b) => b.sub).forEach((b) => { const el = root.querySelector(`[data-bsub="${b.id}"]`); if (el) el.textContent = b.sub(); });
+      const next = (NEXT.find(([k]) => !done[k]) || [])[0];
+      root.querySelectorAll('.bub').forEach((el) => el.classList.toggle('next', BUBBLES.find((b) => b.id === el.dataset.bub).kind === next && !popped.has(el.dataset.bub)));
+      root.querySelector('.pond').classList.toggle('empty', n === 4);
     }
     const h = hero(), box = root.querySelector('[data-swap]');
-    if (animate && box.querySelector('[data-h="title"]').textContent !== h.title) {
+    if (animate && box.querySelector('[data-h="sub"]').textContent !== h.sub) {
       box.classList.add('out');
-      setTimeout(() => { Object.entries(h).forEach(([k, v]) => { box.querySelector(`[data-h="${k}"]`).textContent = v; }); box.classList.remove('out'); }, 180);
+      setTimeout(() => { Object.entries(h).forEach(([k, v]) => { box.querySelector(`[data-h="${k}"]`).textContent = v; }); box.classList.remove('out'); }, 420);
     } else Object.entries(h).forEach(([k, v]) => { box.querySelector(`[data-h="${k}"]`).textContent = v; });
+  };
+
+  // коуч реагирует глазами: думает, пока пересчитывает, потом радуется
+  let moodTimers = [];
+  const mood = (seq) => {
+    moodTimers.forEach(clearTimeout); moodTimers = [];
+    const el = root.querySelector('.coach'); if (!el) return;
+    let t = 0;
+    seq.forEach(([m, ms]) => { moodTimers.push(setTimeout(() => { el.dataset.mood = m; }, t)); t += ms; });
+    moodTimers.push(setTimeout(() => { el.dataset.mood = 'idle'; }, t));
+  };
+
+  // шар лопается: вздувается, исчезает, от него разлетаются брызги
+  const pop = (id) => {
+    const el = root.querySelector(`[data-bub="${id}"]`); if (!el || popped.has(id)) return;
+    popped.add(id);
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (calm) { el.classList.add('gone'); return; }
+    const b = BUBBLES.find((x) => x.id === id), field = root.querySelector('[data-pond]');
+    el.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.14)', opacity: 1, offset: 0.35 }, { transform: 'scale(.5)', opacity: 0 }], { duration: 260, easing: 'ease-out' }).finished.then(() => el.classList.add('gone'));
+    for (let i = 0; i < 7; i++) {
+      const p = document.createElement('i'); p.className = 'spl spl-' + b.kind; field.appendChild(p);
+      const a = (i / 7) * Math.PI * 2 + 0.4, r = b.d / 2 + 10 + (i % 2) * 8;
+      p.animate([
+        { transform: `translate(${b.x}px, ${b.y}px) scale(1)`, opacity: 0.9 },
+        { transform: `translate(${(b.x + Math.cos(a) * r).toFixed(1)}px, ${(b.y + Math.sin(a) * r + 6).toFixed(1)}px) scale(.3)`, opacity: 0 },
+      ], { delay: 70, duration: 420, easing: 'cubic-bezier(.23, 1, .32, 1)', fill: 'backwards' }).finished.then(() => p.remove());
+    }
   };
 
   const sheet = (open) => root.classList.toggle('sheet-open', open);
 
-  const act = (key) => {
+  const act = (key, bub) => {
     if (!day.today || done[key]) return;
     if (key === 'meal') { sheet(true); return; }
-    if (key === 'walk') { s.act += 160; s.steps += 4700; s.train += 40; done.walk = true; }
-    if (key === 'water') { s.glasses += 1; s.water = +(s.water + 0.2).toFixed(1); if (s.glasses >= 3) done.water = true; }
-    if (key === 'sleep') done.sleep = true;
+    if (key === 'walk') { s.act += 160; s.steps += 4700; s.train += 40; done.walk = true; pop('walk'); }
+    if (key === 'water') {
+      const id = bub || ['w1', 'w2', 'w3'].find((w) => !popped.has(w));
+      s.glasses += 1; s.water = +(s.water + 0.2).toFixed(1); if (s.glasses >= 3) done.water = true; pop(id);
+    }
+    if (key === 'sleep') { done.sleep = true; pop('sleep'); }
+    mood([['think', 420], ['happy', 900]]);
     sync();
   };
 
   root.addEventListener('click', (e) => {
     const d = e.target.closest('[data-do]'); if (d) return act(d.dataset.do);
+    const bub = e.target.closest('[data-bub]');
+    if (bub) { const b = BUBBLES.find((x) => x.id === bub.dataset.bub); return act(b.kind, b.id); }
     const dayBtn = e.target.closest('[data-day]');
-    if (dayBtn && !dayBtn.disabled) { const d2 = WEEK.find((x) => x.n === +dayBtn.dataset.day); if (d2 !== day) { if (d2.today && saved) { day = d2; s = saved.s; done = saved.done; } else { if (day.today) saved = { s, done }; load(d2); } render(); } return; }
+    if (dayBtn && !dayBtn.disabled) { const d2 = WEEK.find((x) => x.n === +dayBtn.dataset.day); if (d2 !== day) { if (d2.today && saved) { day = d2; s = saved.s; done = saved.done; popped = saved.popped; } else { if (day.today) saved = { s, done, popped }; load(d2); } render(); } return; }
     const opt = e.target.closest('[data-opt]');
     if (opt) {
       const m = DINNERS[+opt.dataset.opt];
       s.kcal += m.add[0]; s.p += m.add[1]; s.f += m.add[2]; s.c += m.add[3];
       done.meal = `${m.add[0]} ккал, ${m.add[1]} г белка`;
-      sheet(false); setTimeout(sync, 220);
+      sheet(false); setTimeout(() => { pop('meal'); mood([['think', 420], ['happy', 900]]); sync(); }, 260);
       return;
     }
     if (e.target.closest('.st-dim')) sheet(false);

@@ -21,11 +21,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await scroll(520); await sleep(200); await shot('2-mid');
   await scroll(2000); await sleep(200); await shot('3-end');
   await scroll(0);
-  await tap('[data-do="meal"]'); await sleep(700); await shot('4-sheet');
-  await tap('[data-opt="0"]'); await sleep(1200);
-  await tap('.pill[data-do="walk"]'); await sleep(300);
-  for (let i = 0; i < 3; i++) { await tap('.pill[data-do="water"]'); await sleep(150); }
-  await tap('.pill[data-do="sleep"]'); await sleep(1200); await shot('5-done');
+  await tap('[data-bub="meal"]'); await sleep(700); await shot('4-sheet');
+  await tap('[data-opt="0"]'); await sleep(450); await shot('4b-pop');
+  await sleep(1300);
+  await tap('[data-bub="walk"]'); await sleep(500);
+  for (const w of ['w1', 'w2', 'w3']) { await tap(`[data-bub="${w}"]`); await sleep(250); }
+  await shot('5a-almost');
+  await tap('[data-bub="sleep"]'); await sleep(1700); await shot('5-done');
   await tap('[data-day="14"]'); await sleep(500); await shot('6-past');
   console.log(errors.length ? 'ошибки: ' + errors.join(' | ') : 'ошибок в консоли нет');
   await browser.close();
