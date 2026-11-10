@@ -9,9 +9,8 @@ const ROOT = path.join(__dirname, '..');
 const FRAMES = path.join(ROOT, '.shots', 'frames');
 const URL = require('url').pathToFileURL(path.join(ROOT, 'index.html')).href;
 const FPS = 30;
-const SECONDS = 12.4;     // вход → цикл → «Подключить» → второй экран → «Продолжить»
-const TAP_AT = 3.8;
-const GO_AT = 9.6;
+const SECONDS = 8.3;      // вход → цикл → «Подключить» → галочка на месте
+const TAP_AT = 4.9;
 
 (async () => {
   fs.rmSync(FRAMES, { recursive: true, force: true });
@@ -41,7 +40,7 @@ const GO_AT = 9.6;
       }
     };
   });
-  await page.goto(URL + '?hold');
+  await page.goto(URL + '?hold&stay');
   await page.addStyleTag({ content: '.replay{display:none}' });
   await new Promise((r) => setTimeout(r, 500));
 
@@ -49,7 +48,6 @@ const GO_AT = 9.6;
   for (let f = 0; f < total; f++) {
     if (f === Math.round(0.2 * FPS)) await page.evaluate(() => document.getElementById('replay').click());
     if (f === Math.round(TAP_AT * FPS)) await page.evaluate(() => document.getElementById('connect').click());
-    if (f === Math.round(GO_AT * FPS)) await page.evaluate(() => document.getElementById('go').click());
     await page.evaluate((dt) => window.__tick(dt), 1000 / FPS);
     await page.screenshot({ path: path.join(FRAMES, 'f' + String(f).padStart(4, '0') + '.jpg'), type: 'jpeg', quality: 95 });
     if (f % 30 === 0) process.stdout.write((f / FPS).toFixed(0) + 's ');
