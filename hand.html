@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Поможем сохранить курс</title>
+<meta name="description" content="Два экрана: запрос уведомлений с живой иллюстрацией и статистика дня с планом на вечер.">
+<link rel="preconnect" href="https://cdn-app.sberdevices.ru" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&text=0123456789:&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="assets/art/hand.webp">
+<style>
+/* Шрифт макета подключён по ссылке владельца, файлов в проекте нет. Если не загрузился — Manrope. */
+@font-face { font-family: "SB Sans Display"; font-weight: 400; font-display: swap; src: url(https://cdn-app.sberdevices.ru/shared-static/0.0.0/fonts/SBSansDisplay.0.2.0/SBSansDisplay-Regular.woff2) format("woff2"); }
+@font-face { font-family: "SB Sans Display"; font-weight: 600; font-display: swap; src: url(https://cdn-app.sberdevices.ru/shared-static/0.0.0/fonts/SBSansDisplay.0.2.0/SBSansDisplay-Semibold.woff2) format("woff2"); }
+/* Manrope лежит рядом. Глифы приподняты на 0,06 em: так строки встают на те же места, что в макете */
+@font-face { font-family: Manrope; font-weight: 400 700; font-display: swap; src: url(assets/fonts/manrope-cyrillic.woff2) format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; ascent-override: 100.6%; descent-override: 36%; line-gap-override: 0%; }
+@font-face { font-family: Manrope; font-weight: 400 700; font-display: swap; src: url(assets/fonts/manrope-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+2212; ascent-override: 100.6%; descent-override: 36%; line-gap-override: 0%; }
+:root {
+  --blue: #2b6cfc;
+  --ink: #020202;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --page: #e9edf3;
+  --font: "SB Sans Display", Manrope, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--page);
+  font-family: var(--font); font-weight: 400;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- iPhone 15 ---------- */
+.fit { width: calc(417px * var(--s, 1)); height: calc((var(--sh, 852px) + 24px) * var(--s, 1)); }
+.device {
+  width: 417px; height: calc(var(--sh, 852px) + 24px); padding: 12px;
+  border-radius: 67px;
+  background: #101114;
+  box-shadow: 0 0 0 2px #c9ccd3, 0 0 0 3px #8e9199, 0 40px 80px -30px rgba(20, 30, 60, .35);
+  transform: scale(var(--s, 1)); transform-origin: 0 0;
+}
+.screen {
+  position: relative; width: 393px; height: var(--sh, 852px);
+  border-radius: 55px; overflow: hidden; background: #fff;
+  isolation: isolate;
+}
+.island {
+  position: absolute; z-index: 40; top: 11px; left: 50%; margin-left: -63px;
+  width: 126px; height: 37px; border-radius: 20px; background: #000;
+}
+body.bare .fit { width: calc(393px * var(--s, 1)); height: calc(var(--sh, 852px) * var(--s, 1)); }
+body.bare .device { width: 393px; height: var(--sh, 852px); padding: 0; border-radius: 0; box-shadow: none; background: none; }
+body.bare .screen { border-radius: 0; }
+body.bare .island, body.bare:not(.bare-auto) .replay { display: none; }
+body.bare-auto .replay { top: 12px; right: auto; bottom: auto; left: 50%; transform: translateX(-50%); z-index: 50; padding: 6px 12px; font-size: 12px; opacity: .7; }
+body.bare { background: #fff; }
+
+/* ---------- Статус-бар и шапка ---------- */
+.header {
+  position: absolute; z-index: 4; inset: 0 0 auto 0; height: 104px;
+  background: linear-gradient(#fff 80%, rgba(255, 255, 255, 0));
+}
+.time {
+  position: absolute; left: 0; top: 18.34px; width: 140.5px; text-align: center;
+  font: 590 17px/22px -apple-system, "SF Pro Text", "SF Pro", Inter, "Segoe UI", sans-serif;
+  color: #222; letter-spacing: 0;
+}
+.levels { position: absolute; right: 0; top: 0; width: 140.5px; height: 54px; }
+.levels > * { position: absolute; display: block; }
+.cellular { left: 30px; top: 23.54px; }
+.wifi { left: 56.7px; top: 23.64px; }
+.batt { left: 81px; top: 23px; width: 25px; height: 13px; border-radius: 4.3px; background: rgba(34, 34, 34, .35); }
+.batt::after { content: ""; position: absolute; inset: 2px; border-radius: 2.5px; background: #222; }
+.cap { left: 107px; top: 27.78px; }
+
+/* ---------- Иллюстрация ---------- */
+.art { position: absolute; z-index: 1; left: 2px; top: 111.4px; width: 390px; height: 380.75px; }
+.l { position: absolute; }
+.l img { display: block; width: 100%; height: 100%; }
+
+/* появление: всё, кроме руки, мягко проявляется волной */
+.in { opacity: 0; transform: scale(.94); transition: opacity 420ms var(--ease-out) var(--d, 0ms), transform 520ms var(--ease-out) var(--d, 0ms); }
+.art:not([data-state="pre"]) .in { opacity: 1; transform: none; }
+
+/* фоновый цикл: облака плывут, точки покачиваются */
+@keyframes drift { from { transform: translateX(calc(var(--a, 6px) * -1)); } to { transform: translateX(var(--a, 6px)); } }
+@keyframes bob { from { transform: translateY(-2.5px); } to { transform: translateY(2.5px); } }
+.cloud img { animation: drift var(--t, 11s) ease-in-out var(--o, 0s) infinite alternate; }
+.dot img { animation: bob var(--t, 4.6s) ease-in-out var(--o, 0s) infinite alternate; }
+
+.token::before { /* белая подложка: галочка в картинке прозрачная */
+  content: ""; position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: #fff;
+}
+.token img { position: relative; }
+
+/* рука с жетоном */
+.hand-move {
+  position: absolute; inset: 0;
+  opacity: 0; transform: translate(-56px, -64px);
+  transition: transform 300ms var(--ease-out), opacity 220ms var(--ease-out);
+}
+.art[data-state="idle"] .hand-move { opacity: 1; transform: none; transition: transform 820ms var(--ease-out) var(--hd, 0ms), opacity 380ms var(--ease-out) var(--hd, 0ms); }
+/* отклик на нажатие начинается сразу: ease-out, без разгона */
+.art[data-state="placing"] .hand-move { opacity: 1; transform: translate(28.57px, 62.20px); transition: transform 300ms var(--ease-out); }
+/* дело сделано — рука уходит тем же путём, каким пришла */
+.art[data-state="placed"] .hand-move { opacity: 0; transform: translate(-56px, -64px); transition: transform 640ms var(--ease-in-out) 160ms, opacity 260ms ease 420ms; }
+
+/* цикл покоя: покачивание и раз в шесть секунд короткий «примеряющий» наклон к пустому кружку */
+@keyframes float {
+  0%, 100% { transform: translate(0, -2.5px) rotate(-.9deg); }
+  36% { transform: translate(0, 2.5px) rotate(.9deg); }
+  50% { transform: translate(6px, 12px) rotate(.3deg); }
+  64% { transform: translate(0, 2px) rotate(.7deg); }
+}
+.hand-float { position: absolute; inset: 0; transform-origin: 80px 40px; animation: float 6s ease-in-out infinite; }
+.art[data-state="placing"] .hand-float, .art[data-state="placed"] .hand-float { animation-play-state: paused; }
+@keyframes wait { 0%, 42%, 62%, 100% { transform: none; } 51% { transform: scale(1.07); } }
+.ring-4 { left: 229px; top: 197px; width: 78px; height: 78px; }
+.ring-4 img { position: absolute; left: 0; top: 0; transition: opacity 420ms ease; }
+.ring-4 .clean { left: 5px; top: 5px; width: 68px; height: 68px; opacity: 0; }
+.art[data-state="placed"] .ring-4 .clean, .art[data-state="rearm"] .ring-4 .clean { opacity: 1; }
+.art[data-state="placed"] .ring-4 .lit, .art[data-state="rearm"] .ring-4 .lit { opacity: 0; }
+.art[data-state="idle"] .ring-4 img { animation: wait 6s ease-in-out infinite; }
+
+.hand { left: 46px; top: 11px; width: 229px; height: 175px; }
+.held { transition: opacity 110ms ease; }
+.art[data-state="placed"] .held, .art[data-state="rearm"] .held { opacity: 0; }
+
+.glow-wrap { transition: opacity 180ms ease, transform 180ms var(--ease-out); }
+@keyframes breathe { from { opacity: .7; transform: scale(.97); } to { opacity: 1; transform: scale(1.05); } }
+.glow { animation: breathe 2.4s ease-in-out infinite alternate; }
+.art[data-state="placed"] .glow-wrap, .art[data-state="rearm"] .glow-wrap { opacity: 0; transform: scale(1.3); }
+
+/* четвёртая галочка встаёт на место с лёгкой посадкой */
+@keyframes land { 0% { opacity: 0; transform: scale(.9); } 55% { opacity: 1; transform: scale(1.07); } 100% { opacity: 1; transform: none; } }
+.token-4 { left: 231.69px; top: 199.2px; width: 73px; height: 74px; opacity: 0; transition: opacity 240ms ease; }
+.art[data-state="placed"] .token-4 { animation: land 380ms var(--ease-out) both; }
+/* соседние галочки отзываются волной от новой */
+@keyframes echo { 50% { transform: scale(1.06); } }
+.art[data-state="placed"] .token[style*="--w"] { animation: echo 420ms ease-in-out calc(140ms + var(--w) * 70ms); }
+
+@keyframes ripple { from { opacity: .5; transform: scale(1); } to { opacity: 0; transform: scale(1.85); } }
+.ripple { left: 239.3px; top: 206.95px; width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--blue); opacity: 0; pointer-events: none; }
+.art[data-state="placed"] .ripple { animation: ripple 680ms var(--ease-out) 40ms both; }
+
+@keyframes nudge { 50% { transform: scale(1.08); } }
+.art[data-state="placed"] .ring-5 { animation: nudge 520ms ease-in-out 380ms; }
+@keyframes twinkle { 45% { transform: scale(1.45); } }
+.art[data-state="placed"] .dot { animation: twinkle 460ms ease-in-out calc(180ms + var(--i) * 55ms); }
+
+/* ---------- Свечение под текстом, текст, кнопки ---------- */
+.aura { position: absolute; z-index: 2; left: 17px; bottom: -128px; width: 615px; height: 600px; pointer-events: none; }
+.sheet {
+  position: absolute; z-index: 5; inset: auto 0 0 0;
+  padding: 24px 24px 48px; display: flex; flex-direction: column; gap: 16px;
+}
+.copy { display: flex; flex-direction: column; gap: 8px; }
+h1 { font-size: 24px; font-weight: 600; line-height: 29px; white-space: nowrap; }
+html:not(.sb) h1 { letter-spacing: -.003em; }
+html.sb h1 { position: relative; top: -1px; }   /* то же округление метрик, что в статистике */
+.copy p { font-size: 16px; line-height: 22px; }
+html:not(.sb) .copy p { letter-spacing: .006em; }
+.actions { display: flex; flex-direction: column; gap: 8px; }
+.btn {
+  appearance: none; border: 0; width: 100%; padding: 12px 24px; border-radius: 16px;
+  font: 600 16px/24px var(--font); cursor: pointer;
+  background: none; color: var(--blue);
+  transition: transform 140ms var(--ease-out), background-color 200ms ease;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.btn:active { transform: scale(.97); }
+.btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.btn-primary { background: var(--blue); color: #fff; display: grid; }
+.btn-primary > span { grid-area: 1 / 1; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 180ms ease, transform 220ms var(--ease-out); }
+.btn-primary .done { opacity: 0; transform: translateY(6px); }
+.btn-primary.is-done .ask { opacity: 0; transform: translateY(-6px); }
+.btn-primary.is-done .done { opacity: 1; transform: none; }
+@media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: #2460e6; } }
+.home { position: absolute; z-index: 1; left: 50%; bottom: 8px; margin-left: -72px; width: 144px; height: 5px; border-radius: 3px; background: #000; }
+
+.replay {
+  position: fixed; right: 20px; bottom: 20px; padding: 10px 16px; border-radius: 999px; border: 0;
+  font: 600 14px/20px var(--font); color: #3b4354; background: #fff; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(20, 30, 60, .12);
+}
+
+.no-anim, .no-anim * { transition: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud img, .dot img, .hand-float, .glow, .ring-4 img { animation: none !important; }
+  .in, .hand-move, .token-4 { transform: none !important; }
+  .art[data-state="placed"] .ripple, .art[data-state="placed"] .ring-5, .art[data-state="placed"] .dot { animation: none; }
+}
+</style>
+<link rel="stylesheet" href="stats.css">
+</head>
+<body>
+<div class="fit">
+  <div class="device">
+    <main class="screen" data-view="intro">
+      <div class="island" aria-hidden="true"></div>
+
+      <div class="intro">
+      <div class="art" data-state="pre" aria-hidden="true">
+        <div class="l cloud in" style="left:15px;top:117px;width:134px;height:75px;--d:0ms;--t:12s;--a:7px"><img src="assets/art/cloud-a.webp" alt=""></div>
+        <div class="l cloud in" style="left:234px;top:31px;width:125px;height:75px;--d:60ms;--t:14s;--a:-6px;--o:-4s"><img src="assets/art/cloud-b.webp" alt=""></div>
+        <div class="l cloud in" style="left:97px;top:300px;width:106px;height:55px;--d:120ms;--t:10s;--a:-5px;--o:-2s"><img src="assets/art/cloud-c.webp" alt=""></div>
+        <div class="l cloud in" style="left:234px;top:288px;width:110px;height:63px;--d:160ms;--t:13s;--a:6px;--o:-7s"><img src="assets/art/cloud-d.webp" alt=""></div>
+
+        <div class="l dot in" style="left:41px;top:86px;width:20px;height:19px;--d:200ms;--i:3;--t:4.4s"><img src="assets/art/dot-1.webp" alt=""></div>
+        <div class="l dot in" style="left:272px;top:88px;width:19px;height:19px;--d:260ms;--i:1;--t:5.2s;--o:-2s"><img src="assets/art/dot-2.webp" alt=""></div>
+        <div class="l dot in" style="left:343px;top:146px;width:20px;height:19px;--d:320ms;--i:0;--t:4.8s;--o:-1s"><img src="assets/art/dot-3.webp" alt=""></div>
+        <div class="l dot in" style="left:334px;top:301px;width:19px;height:20px;--d:380ms;--i:2;--t:5.6s;--o:-3s"><img src="assets/art/dot-4.webp" alt=""></div>
+        <div class="l dot in" style="left:48px;top:326px;width:20px;height:19px;--d:440ms;--i:4;--t:4.2s;--o:-2.5s"><img src="assets/art/dot-5.webp" alt=""></div>
+
+        <div class="l in ring-4" style="--d:330ms"><img class="clean" src="assets/art/ring-4.webp" alt=""><img class="lit" src="assets/art/ring-4-lit.webp" alt=""></div>
+        <div class="l in ring-5" style="left:303px;top:193px;width:68px;height:68px;--d:400ms"><img src="assets/art/ring-5.webp" alt=""></div>
+
+        <div class="l token in" style="left:28px;top:227px;width:75px;height:76px;--d:120ms;--w:2"><img src="assets/art/token-1.webp" alt=""></div>
+        <div class="l token in" style="left:96px;top:216px;width:76px;height:76px;--d:190ms;--w:1"><img src="assets/art/token-2.webp" alt=""></div>
+        <div class="l token in" style="left:165px;top:207px;width:73px;height:74px;--d:260ms;--w:0"><img src="assets/art/token-3.webp" alt=""></div>
+
+        <div class="l ripple"></div>
+        <div class="l token token-4"><img src="assets/art/token-3.webp" alt=""></div>
+
+        <div class="hand-move" style="--hd:300ms">
+          <div class="hand-float">
+            <div class="l glow-wrap" style="left:189px;top:123px;width:102px;height:102px"><img class="glow" src="assets/art/glow.webp" alt=""></div>
+            <div class="l hand"><img src="assets/art/hand.webp" alt=""></div>
+            <div class="l" style="left:222px;top:127px;width:46px;height:44px"><img src="assets/art/fingertip.webp" alt=""></div>
+            <div class="l held" style="left:211px;top:145px;width:58px;height:58px"><img src="assets/art/token-held.webp" alt=""></div>
+            <div class="l" style="left:208px;top:142px;width:63px;height:63px"><img src="assets/art/thumb.webp" alt=""></div>
+          </div>
+        </div>
+      </div>
+
+      <img class="aura" src="assets/ui/ellipse.svg" alt="">
+
+      <header class="header" aria-hidden="true">
+        <div class="time">20:01</div>
+        <div class="levels">
+          <img class="cellular" src="assets/ui/cellular.svg" alt="">
+          <img class="wifi" src="assets/ui/wifi.svg" alt="">
+          <span class="batt"></span>
+          <img class="cap" src="assets/ui/cap.svg" alt="">
+        </div>
+      </header>
+
+      <section class="sheet">
+        <div class="copy">
+          <h1>Поможем сохранить курс</h1>
+          <p>Итоги недели, ваш прогресс и<br>рекомендации будут приходить, даже<br>когда приложение закрыто. Управлять<br>уведомлениями можно в профиле.</p>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" id="connect" type="button">
+            <span class="ask">Подключить</span>
+            <span class="done" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5l3.6 3.5 7.4-8" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Подключено
+            </span>
+          </button>
+          <button class="btn" id="later" type="button">Позже</button>
+        </div>
+      </section>
+      <div class="home" aria-hidden="true"></div>
+      </div>
+      <section class="stats" id="stats" aria-label="Статистика"></section>
+    </main>
+  </div>
+</div>
+<button class="replay" id="replay" type="button">↻ Сначала</button>
+
+<script>
+// шрифт макета загрузился — помечаем, чтобы отключить подгонку под запасной
+document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.length) document.documentElement.classList.add('sb'); }).catch(() => {});
+</script>
+<script src="stats.js"></script>
+<script>
+(() => {
+  const art = document.querySelector('.art');
+  const connect = document.getElementById('connect');
+  const params = new URLSearchParams(location.search);
+  let timers = [];
+  const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+  const clear = () => { timers.forEach(clearTimeout); timers = []; };
+  const set = (s) => { art.dataset.state = s; };
+
+  // подгонка телефона под окно; на самом телефоне — без рамки
+  const fit = () => {
+    const bare = params.has('bare') || Math.min(innerWidth, innerHeight) < 500;
+    document.body.classList.toggle('bare', bare);
+    document.body.classList.toggle('bare-auto', bare && !params.has('bare'));
+    const sh = +params.get('h') || 852;                 // ?h=844 — высота макета, для сверки
+    document.documentElement.style.setProperty('--sh', sh + 'px');
+    const w = bare ? 393 : 417, h = bare ? sh : sh + 24, pad = bare ? 0 : 32;
+    const s = Math.min((innerWidth - pad) / w, (innerHeight - pad) / h, bare ? 9 : 1.15);
+    document.documentElement.style.setProperty('--s', s.toFixed(4));
+  };
+  addEventListener('resize', fit); fit();
+
+  const screen = document.querySelector('.screen');
+  const view = (v) => { screen.dataset.view = v; };
+
+  const enter = () => {
+    clear();
+    connect.classList.remove('is-done');
+    view('intro'); window.Stats.reset();
+    art.classList.add('no-anim'); set('pre');
+    void art.offsetWidth;
+    art.classList.remove('no-anim');
+    art.querySelector('.hand-move').style.setProperty('--hd', '300ms');
+    requestAnimationFrame(() => requestAnimationFrame(() => set('idle')));
+  };
+
+  const rearm = (wait) => {              // рука уходит тем же путём, каким пришла, и возвращается с новым жетоном
+    set('rearm');
+    connect.classList.remove('is-done');
+    art.querySelector('.hand-move').style.setProperty('--hd', '0ms');
+    later(() => set('idle'), wait);
+  };
+
+  // «Подключить»: рука ставит галочку в следующий кружок, затем открывается статистика
+  const place = () => {
+    if (art.dataset.state !== 'idle') return;
+    clear();
+    connect.classList.add('is-done');
+    set('placing');
+    later(() => set('placed'), 270);
+    if (!params.has('stay')) later(() => view('stats'), 1050);
+  };
+
+  connect.addEventListener('click', place);
+  // «Позже»: рука уходит, экран закрывается
+  document.getElementById('later').addEventListener('click', () => { if (art.dataset.state !== 'idle') return; clear(); set('rearm'); if (params.has('stay')) later(() => set('idle'), 1300); else later(() => view('stats'), 420); });
+  document.getElementById('replay').addEventListener('click', enter);
+
+  const imgs = [...document.querySelectorAll('.art img')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
+  Promise.all(imgs).then(() => { if (params.get('screen') === 'stats') { art.classList.add('no-anim'); set('idle'); view('stats'); } else if (!params.has('hold')) enter(); else { art.classList.add('no-anim'); set('idle'); if (params.get('screen') === 'stats') view('stats'); } });
+})();
+</script>
+</body>
+</html>
