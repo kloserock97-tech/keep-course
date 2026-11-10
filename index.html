@@ -15,6 +15,7 @@
   --ink: #020202;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --page: #e9edf3;
 }
 * { box-sizing: border-box; margin: 0; }
@@ -44,7 +45,7 @@ body {
   isolation: isolate;
 }
 .island {
-  position: absolute; z-index: 9; top: 11px; left: 50%; margin-left: -63px;
+  position: absolute; z-index: 14; top: 11px; left: 50%; margin-left: -63px;
   width: 126px; height: 37px; border-radius: 20px; background: #000;
 }
 body.bare .fit { width: calc(393px * var(--s, 1)); height: calc(852px * var(--s, 1)); }
@@ -163,7 +164,50 @@ h1 { font-size: 24px; font-weight: 600; line-height: 1.2; white-space: nowrap; }
 .btn-primary.is-done .ask { opacity: 0; transform: translateY(-6px); }
 .btn-primary.is-done .done { opacity: 1; transform: none; }
 @media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: #2460e6; } }
-.home { position: absolute; z-index: 8; left: 50%; bottom: 8px; margin-left: -67px; width: 134px; height: 5px; border-radius: 3px; background: #111; }
+.home { position: absolute; z-index: 13; left: 50%; bottom: 8px; margin-left: -67px; width: 134px; height: 5px; border-radius: 3px; background: #111; }
+
+/* ---------- Второй экран: шторка с ориентирами ---------- */
+.dim { position: absolute; z-index: 10; inset: 0; background: rgba(0, 0, 0, .5); opacity: 0; pointer-events: none; transition: opacity 320ms ease; }
+.screen:not([data-sheet="closed"]) .dim { opacity: 1; pointer-events: auto; }
+.modal {
+  position: absolute; z-index: 11; inset: 50px 0 0 0;
+  transform: translateY(100%); visibility: hidden;
+  transition: transform 360ms var(--ease-drawer), visibility 0s 360ms;
+}
+.screen:not([data-sheet="closed"]) .modal { transform: none; visibility: visible; transition: transform 520ms var(--ease-drawer); }
+.grabber { position: absolute; left: 50%; top: 0; margin-left: -21.5px; width: 43px; height: 5px; border-radius: 2.5px; background: rgba(255, 255, 255, .45); }
+.modal-body { position: absolute; inset: 14px 0 0 0; background: #fff; border-radius: 24px 24px 0 0; overflow: hidden; }
+.close { position: absolute; left: 20px; top: 32px; width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.close::after { content: ""; position: absolute; inset: -10px; }
+.close img { display: block; }
+
+.art2 { position: absolute; left: 27.5px; top: 56px; width: 338px; height: 338px; }
+.scene { position: absolute; inset: 0; opacity: 0; transform: scale(.97); transition: opacity 200ms ease, transform 200ms ease; }
+.screen:not([data-sheet="closed"]) .scene { opacity: 1; transform: none; transition: opacity 460ms var(--ease-out) 140ms, transform 620ms var(--ease-out) 140ms; }
+.scene > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.scene > img.retouch { inset: auto; left: 73.63px; top: 231px; width: 18.5px; height: 18px; }
+
+/* предметы-ориентиры: мягкие заплатки поверх картинки, слегка покачиваются */
+@keyframes sway { from { transform: rotate(-2.6deg); } to { transform: rotate(2.6deg); } }
+@keyframes bob2 { from { transform: translateY(-1.6px); } to { transform: translateY(1.6px); } }
+.patch img { animation: bob2 var(--t, 3.8s) ease-in-out var(--o, 0s) infinite alternate; }
+.patch.flag img { animation: sway 3.2s ease-in-out infinite alternate; transform-origin: 13.4px 40px; }
+@keyframes pop { 45% { transform: scale(1.1); } }
+.screen[data-sheet="done"] .patch:not(.flag) { animation: pop 440ms ease-in-out calc(var(--i) * 90ms); }
+
+/* в цикле ориентиры по очереди чуть приподнимаются, последним искрит флажок */
+@keyframes wave { 0%, 13%, 100% { transform: none; } 6.5% { transform: scale(1.055); } }
+.screen[data-sheet="open"] .patch:not(.flag) { animation: wave 5.4s ease-in-out calc(1.3s + var(--i) * 240ms) infinite; }
+@keyframes spark { 0%, 14%, 100% { opacity: 0; transform: scale(.5); } 3% { opacity: .9; } 14% { transform: scale(1.5); } }
+@keyframes burst { from { opacity: .95; transform: scale(.5); } to { opacity: 0; transform: scale(1.7); } }
+.burst { position: absolute; left: 240px; top: 14px; width: 46px; height: 46px; opacity: 0; transform-origin: 16px 38px; pointer-events: none; }
+.screen[data-sheet="open"] .burst { animation: spark 5.4s var(--ease-out) 2.3s infinite; }
+.screen[data-sheet="done"] .burst { animation: burst 640ms var(--ease-out) 400ms both; }
+
+.sheet2 { position: absolute; inset: auto 0 0 0; padding: 24px 25.5px 56px; display: flex; flex-direction: column; gap: 32px; }
+.sheet2 .copy { gap: 16px; }
+.sheet2 h1 { white-space: normal; }
+.btn-lg { padding: 16px; border-radius: 20px; }
 
 .replay {
   position: fixed; right: 20px; bottom: 20px; padding: 10px 16px; border-radius: 999px; border: 0;
@@ -177,13 +221,16 @@ h1 { font-size: 24px; font-weight: 600; line-height: 1.2; white-space: nowrap; }
   .cloud img, .dot img, .hand-float, .glow { animation: none; }
   .in, .hand-move, .token-4 { transform: none !important; }
   .art[data-state="placed"] .ripple, .art[data-state="placed"] .ring-5, .art[data-state="placed"] .dot { animation: none; }
+  .patch img, .burst, .patch { animation: none !important; }
+  .scene { transform: none !important; }
+  .modal { transition-duration: 1ms !important; }
 }
 </style>
 </head>
 <body>
 <div class="fit">
   <div class="device">
-    <main class="screen">
+    <main class="screen" data-sheet="closed">
       <div class="island" aria-hidden="true"></div>
 
       <div class="art" data-state="pre" aria-hidden="true">
@@ -247,6 +294,41 @@ h1 { font-size: 24px; font-weight: 600; line-height: 1.2; white-space: nowrap; }
           <button class="btn" id="later" type="button">Позже</button>
         </div>
       </section>
+      <div class="dim" id="dim"></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="t2">
+        <div class="grabber" aria-hidden="true"></div>
+        <div class="modal-body">
+          <button class="close" id="close" type="button" aria-label="Закрыть"><img src="assets/ui/close.svg" alt="" width="24" height="24"></button>
+          <div class="art2" aria-hidden="true">
+            <div class="scene">
+              <img src="assets/goals/scene.webp" alt="">
+              <img class="retouch" src="assets/goals/retouch.svg" alt="">
+              <div class="l patch" style="left:153.91px;top:28.84px;width:84.37px;height:64.15px;--i:0;--t:3.6s"><img src="assets/goals/bowl.webp" alt=""></div>
+              <div class="l patch" style="left:246.63px;top:60.92px;width:81.13px;height:81.13px;--i:1;--t:4.2s;--o:-1.4s"><img src="assets/goals/bottle.webp" alt=""></div>
+              <div class="l patch" style="left:224.79px;top:142.05px;width:84.37px;height:64.15px;--i:2;--t:3.9s;--o:-2.6s"><img src="assets/goals/shoe.webp" alt=""></div>
+              <div class="l patch" style="left:3.5px;top:102.96px;width:64.15px;height:54.18px;--i:3;--t:4.4s;--o:-.8s"><img src="assets/goals/scale.webp" alt=""></div>
+              <div class="l patch flag" style="left:241.78px;top:10.78px;width:47.17px;height:46.09px"><img src="assets/goals/flag.webp" alt=""></div>
+              <svg class="burst" viewBox="0 0 46 46" fill="none" stroke="#2b6cfc" stroke-width="2.4" stroke-linecap="round"><path d="M22 14l3-9M30 18l9-7M33 27l10-1M12 15L6 8"/></svg>
+            </div>
+          </div>
+          <section class="sheet2">
+            <div class="copy">
+              <h1 id="t2">Настроим ориентиры<br>на каждый день?</h1>
+              <p>Подберём ориентиры по питанию,<br>активности, воде, шагам и сну с учётом<br>ваших данных — чтобы вам было проще<br>следить за прогрессом.</p>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary btn-lg" id="go" type="button">
+                <span class="ask">Продолжить</span>
+                <span class="done" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5l3.6 3.5 7.4-8" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Подбираем
+                </span>
+              </button>
+              <button class="btn btn-lg" id="skip" type="button">В другой раз</button>
+            </div>
+          </section>
+        </div>
+      </div>
       <div class="home" aria-hidden="true"></div>
     </main>
   </div>
@@ -273,9 +355,14 @@ h1 { font-size: 24px; font-weight: 600; line-height: 1.2; white-space: nowrap; }
   };
   addEventListener('resize', fit); fit();
 
+  const screen = document.querySelector('.screen');
+  const go = document.getElementById('go');
+  const sheet = (v) => { screen.dataset.sheet = v; };
+
   const enter = () => {
     clear();
-    connect.classList.remove('is-done');
+    connect.classList.remove('is-done'); go.classList.remove('is-done');
+    sheet('closed');
     art.classList.add('no-anim'); set('pre');
     void art.offsetWidth;
     art.classList.remove('no-anim');
@@ -283,26 +370,48 @@ h1 { font-size: 24px; font-weight: 600; line-height: 1.2; white-space: nowrap; }
     requestAnimationFrame(() => requestAnimationFrame(() => set('idle')));
   };
 
-  // отклик на «Подключить»: рука ставит галочку в следующий кружок
+  const rearm = (wait) => {              // рука уходит тем же путём, каким пришла, и возвращается с новым жетоном
+    set('rearm');
+    connect.classList.remove('is-done');
+    art.querySelector('.hand-move').style.setProperty('--hd', '0ms');
+    later(() => set('idle'), wait);
+  };
+
+  // «Подключить»: рука ставит галочку в следующий кружок, затем поднимается второй экран
   const place = () => {
     if (art.dataset.state !== 'idle') return;
     clear();
     connect.classList.add('is-done');
     set('placing');
     later(() => set('placed'), 320);
-    later(() => {                       // только для прототипа: вернуть сцену в исходное
-      set('rearm');
-      connect.classList.remove('is-done');
-      art.querySelector('.hand-move').style.setProperty('--hd', '0ms');
-      later(() => set('idle'), 340);
-    }, 3400);
+    later(() => sheet('open'), 1150);
+  };
+
+  const closeSheet = () => {
+    if (screen.dataset.sheet === 'closed') return;
+    clear();
+    go.classList.remove('is-done');
+    sheet('closed');
+    later(() => rearm(340), 260);
+  };
+
+  // «Продолжить»: ориентиры откликаются по очереди, флажок искрит
+  const proceed = () => {
+    if (screen.dataset.sheet !== 'open') return;
+    clear();
+    go.classList.add('is-done');
+    sheet('done');
+    later(() => { go.classList.remove('is-done'); sheet('open'); }, 2800);   // только для прототипа
   };
 
   connect.addEventListener('click', place);
+  document.getElementById('later').addEventListener('click', () => { if (art.dataset.state === 'idle') { clear(); rearm(1300); } });
+  go.addEventListener('click', proceed);
+  ['close', 'skip', 'dim'].forEach((id) => document.getElementById(id).addEventListener('click', closeSheet));
   document.getElementById('replay').addEventListener('click', enter);
 
-  const imgs = [...art.querySelectorAll('img')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
-  Promise.all(imgs).then(() => { if (!params.has('hold')) enter(); else { art.classList.add('no-anim'); set('idle'); } });
+  const imgs = [...document.querySelectorAll('.art img, .art2 img')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
+  Promise.all(imgs).then(() => { if (!params.has('hold')) enter(); else { art.classList.add('no-anim'); set('idle'); if (params.has('sheet')) sheet('open'); } });
 })();
 </script>
 </body>

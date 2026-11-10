@@ -1,10 +1,11 @@
 {
   "name": "keep-course",
   "version": "1.0.0",
-  "description": "Экран запроса уведомлений с живой иллюстрацией",
+  "description": "Два экрана с живыми иллюстрациями",
   "scripts": {
     "cut": "node tools/cut.js",
-    "shoot": "node tools/shoot.js"
+    "shoot": "node tools/shoot.js",
+    "cut:goals": "node tools/cut-goals.js"
   },
   "keywords": [],
   "author": "",

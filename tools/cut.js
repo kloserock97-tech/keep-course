@@ -35,6 +35,16 @@ const DOTS = LAYERS.filter((l) => l.name.startsWith('dot')).map((l) => l.circle)
 const HAND_POLY = LAYERS.find((l) => l.hand).poly.map(([x, y]) => [x * P, y * P]);
 const HELD = [615, 447, 73]; // жетон в руке (превью-координаты)
 
+function distToPoly(x, y, poly) {
+  let best = Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [ax, ay] = poly[j], [bx, by] = poly[i];
+    const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)));
+    best = Math.min(best, Math.hypot(x - ax - t * (bx - ax), y - ay - t * (by - ay)));
+  }
+  return best;
+}
+
 function inPoly(x, y, poly) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -79,7 +89,7 @@ function inPoly(x, y, poly) {
       }
       if (L.cloud) {                                 // в рамку облака попадают точки и край руки
         m *= 1 - smooth(0.26, 0.4, a);
-        if (inPoly(sx, sy, HAND_POLY)) m = 0;
+        if (inPoly(sx, sy, HAND_POLY)) m = 0; else m *= smooth(14, 44, distToPoly(sx, sy, HAND_POLY));
         for (const [dx, dy] of DOTS) if (Math.hypot(sx - dx * P, sy - dy * P) < 22 * P) m = 0;
       }
       if (L.noGreen) m *= smooth(-6, 6, b - g);      // на кольце 4 запечён край свечения
