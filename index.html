@@ -5,11 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Поможем сохранить курс</title>
 <meta name="description" content="Два экрана: запрос уведомлений с живой иллюстрацией и статистика дня с планом на вечер.">
+<link rel="preconnect" href="https://cdn-app.sberdevices.ru" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&text=0123456789:&display=swap" rel="stylesheet">
 <link rel="preload" as="image" href="assets/art/hand.webp">
 <style>
+/* Шрифт макета подключён по ссылке владельца, файлов в проекте нет. Если не загрузился — Manrope. */
+@font-face { font-family: "SB Sans Display"; font-weight: 400; font-display: swap; src: url(https://cdn-app.sberdevices.ru/shared-static/0.0.0/fonts/SBSansDisplay.0.2.0/SBSansDisplay-Regular.woff2) format("woff2"); }
+@font-face { font-family: "SB Sans Display"; font-weight: 600; font-display: swap; src: url(https://cdn-app.sberdevices.ru/shared-static/0.0.0/fonts/SBSansDisplay.0.2.0/SBSansDisplay-Semibold.woff2) format("woff2"); }
 /* Manrope лежит рядом. Глифы приподняты на 0,06 em: так строки встают на те же места, что в макете */
 @font-face { font-family: Manrope; font-weight: 400 700; font-display: swap; src: url(assets/fonts/manrope-cyrillic.woff2) format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; ascent-override: 100.6%; descent-override: 36%; line-gap-override: 0%; }
 @font-face { font-family: Manrope; font-weight: 400 700; font-display: swap; src: url(assets/fonts/manrope-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+2212; ascent-override: 100.6%; descent-override: 36%; line-gap-override: 0%; }
@@ -20,12 +24,13 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --page: #e9edf3;
+  --font: "SB Sans Display", Manrope, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; margin: 0; }
 html, body { height: 100%; }
 body {
   background: var(--page);
-  font-family: Manrope, -apple-system, "Segoe UI", sans-serif; font-weight: 400;
+  font-family: var(--font); font-weight: 400;
   color: var(--ink);
   display: grid;
   place-items: center;
@@ -158,12 +163,15 @@ body.bare { background: #fff; }
   padding: 24px 24px 48px; display: flex; flex-direction: column; gap: 16px;
 }
 .copy { display: flex; flex-direction: column; gap: 8px; }
-h1 { font-size: 24px; font-weight: 600; line-height: 29px; white-space: nowrap; letter-spacing: -.003em; }
-.copy p { font-size: 16px; line-height: 22px; letter-spacing: .006em; }
+h1 { font-size: 24px; font-weight: 600; line-height: 29px; white-space: nowrap; }
+html:not(.sb) h1 { letter-spacing: -.003em; }
+html.sb h1 { position: relative; top: -1px; }   /* то же округление метрик, что в статистике */
+.copy p { font-size: 16px; line-height: 22px; }
+html:not(.sb) .copy p { letter-spacing: .006em; }
 .actions { display: flex; flex-direction: column; gap: 8px; }
 .btn {
   appearance: none; border: 0; width: 100%; padding: 12px 24px; border-radius: 16px;
-  font: 600 16px/24px Manrope, -apple-system, sans-serif; cursor: pointer;
+  font: 600 16px/24px var(--font); cursor: pointer;
   background: none; color: var(--blue);
   transition: transform 140ms var(--ease-out), background-color 200ms ease;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
@@ -180,7 +188,7 @@ h1 { font-size: 24px; font-weight: 600; line-height: 29px; white-space: nowrap; 
 
 .replay {
   position: fixed; right: 20px; bottom: 20px; padding: 10px 16px; border-radius: 999px; border: 0;
-  font: 600 14px/20px Manrope, sans-serif; color: #3b4354; background: #fff; cursor: pointer;
+  font: 600 14px/20px var(--font); color: #3b4354; background: #fff; cursor: pointer;
   box-shadow: 0 1px 2px rgba(20, 30, 60, .12);
 }
 
@@ -270,6 +278,10 @@ h1 { font-size: 24px; font-weight: 600; line-height: 29px; white-space: nowrap; 
 </div>
 <button class="replay" id="replay" type="button">↻ Сначала</button>
 
+<script>
+// шрифт макета загрузился — помечаем, чтобы отключить подгонку под запасной
+document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.length) document.documentElement.classList.add('sb'); }).catch(() => {});
+</script>
 <script src="stats.js"></script>
 <script>
 (() => {

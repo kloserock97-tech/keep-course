@@ -12,7 +12,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   await page.setViewport({ width: 393, height: 852, deviceScaleFactor: 2 });
-  await page.goto(URL + '?bare&screen=stats');
+  await page.goto(URL + '?bare&screen=stats', { waitUntil: 'networkidle0' });
   await sleep(900);
   const shot = (n) => page.screenshot({ path: path.join(ROOT, '.shots', `st-${n}.png`) });
   const scroll = (y) => page.evaluate((v) => { document.querySelector('.st-scroll').scrollTop = v; }, y);

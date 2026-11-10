@@ -4,8 +4,13 @@
   position: absolute; z-index: 20; inset: 0; background: #fff; overflow: hidden;
   transform: translateX(100%); visibility: hidden;
   transition: transform 420ms var(--ease-drawer), visibility 0s 420ms;
-  font-feature-settings: "lnum" 1, "tnum" 1;
 }
+/* цифры одной ширины — там же, где в макете; в датах и подписях обычные */
+.num, .bju strong, .split strong, .barrow em, .wname, .day small, .mark-ring .pct, .plan-count { font-feature-settings: "lnum" 1, "tnum" 1; }
+.barrow em span:last-child { font-feature-settings: "lnum" 1, "pnum" 1; }
+/* браузер округляет метрики шрифта до целых, из-за этого строки некоторых кеглей садятся ниже макета на 1–2 pt */
+html.sb .wname, html.sb .bju p, html.sb .split p, html.sb .num span, html.sb .barrow em, html.sb .st-head h2, html.sb .day small { position: relative; top: -1px; }
+html.sb .num b { position: relative; top: -2px; }
 .screen[data-view="stats"] .stats { transform: none; visibility: visible; transition: transform 480ms var(--ease-drawer); }
 .intro { position: absolute; inset: 0; transition: transform 480ms var(--ease-drawer), opacity 300ms ease; }
 .screen[data-view="stats"] .intro { transform: translateX(-28%); opacity: 0; }
@@ -31,7 +36,7 @@
 .day {
   appearance: none; background: none; border: 0; border-radius: 12px; cursor: pointer;
   padding: 8px 14px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  font: 600 16px/22px Manrope, sans-serif; color: var(--ink); -webkit-tap-highlight-color: transparent;
+  font: 600 16px/22px var(--font); color: var(--ink); -webkit-tap-highlight-color: transparent;
   transition: box-shadow 160ms ease, color 160ms ease;
 }
 .day small { font-size: 10px; line-height: 12px; letter-spacing: .8px; text-transform: uppercase; color: var(--grey); }
@@ -87,7 +92,7 @@
 .todo.done .todo-text b { color: var(--grey); }
 .pill {
   appearance: none; flex: none; border: 0; border-radius: 12px; padding: 8px 14px; cursor: pointer;
-  font: 600 14px/20px Manrope, sans-serif; color: #fff; background: var(--blue);
+  font: 600 14px/20px var(--font); color: #fff; background: var(--blue);
   transition: transform 140ms var(--ease-out), opacity 160ms ease; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
 .pill:active { transform: scale(.97); }
@@ -99,8 +104,10 @@
 .w-top { display: flex; align-items: center; gap: 6px; height: 20px; }
 .w-top img { width: 20px; height: 20px; }
 .num { display: flex; align-items: flex-end; gap: 4px; margin-top: 16px; font-weight: 600; white-space: nowrap; }
-.num b { font-size: 32px; font-weight: 600; line-height: 32px; letter-spacing: .012em; }
-.num span { font-size: 18px; line-height: 23px; letter-spacing: .018em; color: var(--grey); }
+.num b { font-size: 32px; font-weight: 600; line-height: 32px; }
+html:not(.sb) .num b { letter-spacing: .012em; }
+.num span { font-size: 18px; line-height: 23px; color: var(--grey); }
+html:not(.sb) .num span { letter-spacing: .018em; }
 .num .u { display: flex; gap: 2px; }
 .num i, .bju i, .split i { font-style: normal; }
 .num .left { margin-left: auto; font-size: 14px; font-weight: 400; line-height: 1.6; }

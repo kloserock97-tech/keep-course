@@ -40,7 +40,8 @@ const TAP_AT = 4.9;
       }
     };
   });
-  await page.goto(URL + '?hold&stay');
+  await page.goto(URL + '?hold&stay', { waitUntil: 'networkidle0' });
+  await page.evaluate(() => document.fonts.ready);
   await page.addStyleTag({ content: '.replay{display:none}' });
   await new Promise((r) => setTimeout(r, 500));
 
