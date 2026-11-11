@@ -68,17 +68,36 @@ const MODEL = 'Xenova/vitmatte-small-distinctions-646';
 const processor = await AutoProcessor.from_pretrained(MODEL);
 const matte = await VitMatteForImageMatting.from_pretrained(MODEL, { dtype: 'fp32' });
 const H = {}, alpha = {};
-for (const k of Object.keys(SHAPES)) H[k] = await poly(SHAPES[k]);
-for (const k of Object.keys(SHAPES)) {
-  const R = k === 'leaf' ? { in: 4, band: 10 } : k === 'avocado' ? { in: 5, band: 6 } : { in: 7, band: 14 };
-  const inner = erode(H[k], R.in), outer = dilate(H[k], R.band);
+// ViTMatte по подсказке: inner — «точно предмет», outer — «посчитай сам», остальное — фон
+const matteOf = async (img, inner, outer) => {
   const [x0, y0, x1, y1] = bbox(outer, 4), w = x1 - x0 + 1, h = y1 - y0 + 1;
   const im = new Uint8ClampedArray(w * h * 3), tri = new Uint8ClampedArray(w * h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y0 + y) * W + x0 + x, j = y * w + x; for (let c = 0; c < 3; c++) im[j * 3 + c] = src[i * 3 + c]; tri[j] = inner[i] ? 255 : outer[i] ? 128 : 0; }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y0 + y) * W + x0 + x, j = y * w + x; for (let c = 0; c < 3; c++) im[j * 3 + c] = img[i * 3 + c]; tri[j] = inner[i] ? 255 : outer[i] ? 128 : 0; }
   const { alphas } = await matte(await processor(new RawImage(im, w, h, 3), new RawImage(tri, w, h, 1)));
   const A = alphas.tolist()[0][0], a = new Float32Array(N);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y0 + y) * W + x0 + x; a[i] = tri[y * w + x] === 255 ? 1 : tri[y * w + x] === 0 ? 0 : Math.min(1, Math.max(0, A[y][x])); }
-  alpha[k] = a; console.log('вырезан', k, w + '×' + h);
+  return a;
+};
+// дыры внутри маски заливаются: всё, до чего нельзя дойти от края рамки по пустому, — внутри
+const fillHoles = (m, [x0, y0, x1, y1]) => {
+  const out = new Uint8Array(N), seen = new Uint8Array(N), st = [];
+  for (let x = x0; x <= x1; x++) st.push(y0 * W + x, y1 * W + x); for (let y = y0; y <= y1; y++) st.push(y * W + x0, y * W + x1);
+  while (st.length) { const i = st.pop(); if (seen[i] || m[i]) continue; seen[i] = 1; const x = i % W, y = (i / W) | 0; if (x > x0) st.push(i - 1); if (x < x1) st.push(i + 1); if (y > y0) st.push(i - W); if (y < y1) st.push(i + W); }
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x; out[i] = seen[i] ? 0 : 1; }
+  return out;
+};
+const largest = (m) => { const lab = new Int32Array(N), sizes = [0]; for (let s = 0; s < N; s++) { if (!m[s] || lab[s]) continue; const id = sizes.length, st = [s]; let n = 0; lab[s] = id; while (st.length) { const i = st.pop(); n++; const x = i % W; for (const j of [i - 1, i + 1, i - W, i + W]) { if (j < 0 || j >= N || (j === i - 1 && x === 0) || (j === i + 1 && x === W - 1)) continue; if (m[j] && !lab[j]) { lab[j] = id; st.push(j); } } } sizes.push(n); } let best = 1; for (let k = 2; k < sizes.length; k++) if (sizes[k] > sizes[best]) best = k; return lab.map((v) => (v === best ? 1 : 0)); };
+for (const k of Object.keys(SHAPES)) H[k] = await poly(SHAPES[k]);
+// весы — по цвету: насыщенный синий в рамке весов, циферблат внутри заливается. Ручная форма теряла нижний край
+{
+  const box = [622, 392, 935, 675], m = new Uint8Array(N);
+  const around = dilate(await poly([[695, 406], [906, 436], [919, 462], [876, 658], [848, 666], [640, 614], [632, 594], [672, 418]]), 5);   // соседний пьедестал того же синего — за контуром не берём
+  for (let y = box[1]; y <= box[3]; y++) for (let x = box[0]; x <= box[2]; x++) { const i = y * W + x, r = src[i * 3], b = src[i * 3 + 2]; m[i] = around[i] && r < 118 && b > 150 && b - r > 85 ? 1 : 0; }
+  H.scale = fillHoles(largest(dilate(erode(dilate(m, 2), 5), 3)), box);   // размыкание срезает тонкие полоски и хвосты
+}
+for (const k of Object.keys(SHAPES)) {
+  const R = k === 'scale' ? { in: 3, band: 7 } : k === 'leaf' ? { in: 4, band: 10 } : k === 'avocado' ? { in: 5, band: 6 } : { in: 7, band: 14 };
+  alpha[k] = await matteOf(src, erode(H[k], R.in), dilate(H[k], R.band)); console.log('вырезан', k);
 }
 // авокадо лежит в миске: у миски его место вычитается, чтобы он мог качаться отдельно
 for (let i = 0; i < N; i++) alpha.bowl[i] = Math.max(0, alpha.bowl[i] - alpha.avocado[i]);
@@ -118,13 +137,46 @@ await fill(plate, union(holeOf('bowl'), holeOf('avocado'))); console.log('фон
 {
   const edge = await sharp(Buffer.from(holeAll.map((v) => v * 255)), { raw: { width: W, height: W, channels: 1 } }).blur(2.5).raw().toBuffer();
   for (let i = 0; i < N; i++) { const a = holeAll[i] ? 1 : edge[i] / 255; for (let c = 0; c < 3; c++) plate[i * 3 + c] = Math.round(src[i * 3 + c] * (1 - a) + plate[i * 3 + c] * a); }
-  await sharp(plate, { raw: { width: W, height: W, channels: 3 } }).webp({ quality: 90 }).toFile(path.join(OUT, 'plate.webp'));
-  await sharp(plate, { raw: { width: W, height: W, channels: 3 } }).png().toFile(path.join(ROOT, '.shots', 'success-plate.png'));
+}
+// Фон прозрачный: экран успеха — градиент, белый квадрат картинки на нём был бы виден.
+// Пьедесталы — сплошные: их край считает ViTMatte по ручным формам. Пятна за ними и тени на полу — «цвет в прозрачность»
+// относительно белого фона: светлое пастельное становится полупрозрачным, белое — прозрачным.
+{
+  const PED = [
+    [[110, 612], [135, 592], [268, 584], [400, 592], [427, 612], [427, 842], [400, 862], [268, 874], [135, 862], [110, 842]],
+    [[379, 372], [405, 355], [512, 348], [620, 355], [645, 372], [645, 790], [379, 790]],
+    [[600, 628], [630, 606], [758, 598], [890, 606], [917, 628], [917, 848], [890, 868], [758, 877], [630, 868], [600, 848]],
+    [[320, 790], [350, 752], [505, 740], [660, 752], [690, 790], [690, 933], [660, 952], [505, 962], [350, 952], [320, 933]],
+  ];
+  const ped0 = union(...(await Promise.all(PED.map(poly))));
+  const ink = new Uint8Array(N); for (let i = 0; i < N; i++) ink[i] = 255 * 3 - plate[i * 3] - plate[i * 3 + 1] - plate[i * 3 + 2] > 60 ? 1 : 0;
+  // ручные формы чуть шире настоящих краёв у нижних углов: почти белое внутри формы — это фон, не пьедестал
+  const ped = new Uint8Array(N); for (let i = 0; i < N; i++) ped[i] = ped0[i] && (((i / W) | 0) < 800 || 765 - plate[i * 3] - plate[i * 3 + 1] - plate[i * 3 + 2] > 28) ? 1 : 0;   // только внизу: светлая верхушка лавандового — пьедестал
+  const near = dilate(ped0, 10);
+  const inner = erode(ped, 7), outer = new Uint8Array(N); for (let i = 0; i < N; i++) outer[i] = near[i] && (ink[i] || ped[i]) ? 1 : 0;
+  const aP = await matteOf(plate, inner, dilate(outer, 4));
+  for (let i = 0; i < N; i++) { if (((i / W) | 0) < 780) continue; const p = [plate[i * 3], plate[i * 3 + 1], plate[i * 3 + 2]], ch = Math.max(...p) - Math.min(...p), t = Math.min(1, Math.max(0, (ch - 12) / 22)); aP[i] *= t * t * (3 - 2 * t); }   // у ножек серое — это пол и тень на нём, не пьедестал: у пьедесталов цвет
+  const bg = [0, 1, 2].map((c) => { let s = 0; for (let y = 4; y < 24; y++) for (let x = 4; x < 24; x++) s += plate[(y * W + x) * 3 + c]; return s / 400; });
+  const out = Buffer.alloc(N * 4);
+  for (let i = 0; i < N; i++) {
+    const p = [plate[i * 3], plate[i * 3 + 1], plate[i * 3 + 2]];
+    let aC = 0; for (let c = 0; c < 3; c++) aC = Math.max(aC, (bg[c] - p[c]) / bg[c]);
+    aC = Math.max(0, Math.min(1, (aC - 0.015) * 1.15));                       // у самого белого — ровно ноль, без серой вуали
+    const a = aP[i] + (1 - aP[i]) * aC;
+    for (let c = 0; c < 3; c++) {
+      const cP = aP[i] > 0.02 ? (p[c] - (1 - aP[i]) * bg[c]) / Math.max(aP[i], 0.3) : 0, cC = aC > 0.01 ? bg[c] - (bg[c] - p[c]) / aC : 0;
+      out[i * 4 + c] = Math.max(0, Math.min(255, Math.round(a > 0.001 ? (aP[i] * cP + (1 - aP[i]) * aC * cC) / a : 0)));
+    }
+    out[i * 4 + 3] = Math.round(a * 255);
+  }
+  await sharp(out, { raw: { width: W, height: W, channels: 4 } }).webp({ quality: 90, alphaQuality: 100 }).toFile(path.join(OUT, 'plate.webp'));
+  await sharp(out, { raw: { width: W, height: W, channels: 4 } }).png().toFile(path.join(ROOT, '.shots', 'success-plate.png'));
+  console.log('фон прозрачный');
 }
 
 // 3. слои: цвет полупрозрачного края очищен от прежнего фона
 const layers = {};
-for (const k of ORDER) {
+for (const k of ORDER.filter((k) => k !== 'bowl' && k !== 'avocado')) {      // миска собирается из листа с продуктами
   const a = alpha[k], [x0, y0, x1, y1] = bbox(a.map((v) => (v > 0.01 ? 1 : 0)), 2), w = x1 - x0 + 1, h = y1 - y0 + 1, buf = Buffer.alloc(w * h * 4);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = (y0 + y) * W + x0 + x, j = (y * w + x) * 4; let al = a[i];
@@ -136,5 +188,37 @@ for (const k of ORDER) {
   layers[k] = { x: x0, y: y0, w, h };
 }
 layers.needle = { pivot: [776, 494], tip: [799, 463] };
+
+// 4. Миска по частям. Продукты взяты с отдельного листа (src-assets/success/food.png, та же генерация по стилю):
+// у каждого целая форма, поэтому их можно двигать по отдельности. У миски отдельно передняя стенка —
+// она ложится поверх продуктов и прячет их низ, как будто они лежат внутри.
+{
+  const food = Buffer.from(await sharp(path.join(ROOT, 'src-assets', 'success', 'food.png')).removeAlpha().resize(W, W).raw().toBuffer());
+  const BOX = { bowl: [62, 94, 492, 340], lettuce: [556, 34, 960, 404], salmon: [60, 406, 498, 656], chickpeas: [582, 432, 956, 686], avocado: [342, 686, 642, 976] };
+  const fa = {};
+  for (const [k, box] of Object.entries(BOX)) {
+    const m = new Uint8Array(N);
+    for (let y = box[1]; y <= box[3]; y++) for (let x = box[0]; x <= box[2]; x++) { const i = y * W + x; m[i] = 765 - food[i * 3] - food[i * 3 + 1] - food[i * 3 + 2] > (k === 'bowl' ? 14 : 40) ? 1 : 0; }
+    const mk = fillHoles(largest(erode(dilate(m, 2), 2)), box);
+    fa[k] = await matteOf(food, erode(mk, k === 'bowl' ? 5 : 3), dilate(mk, 6));
+    console.log('продукт', k);
+  }
+  const save = async (name, a) => {
+    const [x0, y0, x1, y1] = bbox(a.map((v) => (v > 0.01 ? 1 : 0)), 2), w = x1 - x0 + 1, h = y1 - y0 + 1, buf = Buffer.alloc(w * h * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y0 + y) * W + x0 + x, j = (y * w + x) * 4, al = a[i];
+      for (let c = 0; c < 3; c++) { let v = food[i * 3 + c]; if (al > 0.02 && al < 0.98) v = (v - (1 - al) * 255) / Math.max(al, 0.3); buf[j + c] = Math.max(0, Math.min(255, Math.round(v))); }
+      buf[j + 3] = Math.round(al * 255);
+    }
+    await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).webp({ quality: 92, alphaQuality: 100 }).toFile(path.join(OUT, 'l-' + name + '.webp'));
+    layers[name] = { x: x0, y: y0, w, h };
+  };
+  for (const k of Object.keys(BOX)) await save(k, fa[k]);
+  // передняя стенка: всё, что ниже переднего края ободка (нижняя дуга эллипса ободка), с растушёвкой в 3 px
+  const R = { cx: 277, cy: 162, rx: 208, ry: 60 }, front = new Float32Array(N);
+  for (let i = 0; i < N; i++) { if (!fa.bowl[i]) continue; const x = i % W, y = (i / W) | 0, u = (x - R.cx) / R.rx; const lip = Math.abs(u) < 1 ? R.cy + R.ry * Math.sqrt(1 - u * u) : R.cy; const t = Math.min(1, Math.max(0, (y - lip + 1) / 3)); front[i] = fa.bowl[i] * t; }
+  await save('bowl-front', front);
+  layers.rim = R;
+}
 fs.writeFileSync(path.join(ROOT, 'src-assets', 'success', 'layers.json'), JSON.stringify(layers, null, 1));
 console.log('слои', JSON.stringify(layers));

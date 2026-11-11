@@ -609,31 +609,41 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   // ---------- Картинка «Цели настроены» ----------
   // Как на экране успеха в продукте: пьедестал, бутылка воды, миска, весы, гантель, листик. Картинка сгенерирована
   // по образцу и разрезана на слои (tools/success-layers.mjs). Каждый предмет — своя группа, у весов стрелка вектором.
-  const SL = { leaf: [166, 153, 100, 91], bottle: [434, 51, 150, 340], bowl: [99, 371, 315, 269], avocado: [276, 420, 122, 118], scale: [634, 406, 286, 254], dumbbell: [359, 663, 275, 150] };
+  // Миска собрана из отдельных продуктов (они сгенерированы отдельным листом): задняя часть миски, салат, сёмга,
+  // авокадо, нут и поверх — передняя стенка миски, которая прячет низ продуктов. Так каждый продукт двигается сам.
+  // Все координаты — в пикселях картинки 1024 × 1024; [x, y, ширина, высота] — где слой лежит в сцене.
+  const BOWL_S = 290 / 424, bowlAt = (sx, sy, sw, sh) => [117 + (sx - 65) * BOWL_S, 473.5 + (sy - 97) * BOWL_S, sw * BOWL_S, sh * BOWL_S];
+  const SL = {
+    leaf: [166, 153, 100, 91], bottle: [434, 51, 150, 340], scale: [626, 406, 294, 253], dumbbell: [359, 663, 275, 150],
+    bowl: bowlAt(65, 97, 424, 239), 'bowl-front': bowlAt(65, 160, 424, 176),
+    lettuce: [110, 350, 393 * 0.58, 359 * 0.58], salmon: [124, 466, 427 * 0.38, 240 * 0.38], avocado: [283, 430, 289 * 0.39, 279 * 0.39], chickpeas: [196, 480, 361 * 0.36, 245 * 0.36],
+  };
+  const BOWL_BOX = [113, 369, 296, 270];                       // миска целиком, с продуктами: для полёта в медаль
   const NEEDLE = { p: [776, 494], t: [799, 463] };
   const SHADOW = { bottle: [509, 386, 58, 10, 0], bowl: [262, 632, 90, 12, 0], scale: [757, 640, 110, 13, 13], dumbbell: [497, 806, 122, 15, 0] };   // тени под предметами: центр, радиусы, наклон
-  const SK = 296 / 900;                                       // пунктов на единицу картинки: кадр 900 × 900 → 296 pt
+  const SK = 296 / 915;                                       // пунктов на единицу картинки: кадр 915 × 955 → 296 × 309 pt
   const img = (k) => { const [x, y, w, h] = SL[k]; return `<image href="assets/success/l-${k}.webp" x="${x}" y="${y}" width="${w}" height="${h}"/>`; };
   const needlePath = (() => {                                  // стрелка сужается от оси к кончику
     const [px, py] = NEEDLE.p, [tx, ty] = NEEDLE.t, l = Math.hypot(tx - px, ty - py), nx = -(ty - py) / l, ny = (tx - px) / l, f = (v) => v.toFixed(1);
     return `M${f(px + nx * 3.4)} ${f(py + ny * 3.4)}L${f(tx + nx * 0.9)} ${f(ty + ny * 0.9)}L${f(tx - nx * 0.9)} ${f(ty - ny * 0.9)}L${f(px - nx * 3.4)} ${f(py - ny * 3.4)}Z`;
   })();
-  W.el.querySelector('.wz-art').innerHTML = `<svg viewBox="62 36 900 900" width="296" height="296" aria-hidden="true">
+  W.el.querySelector('.wz-art').innerHTML = `<svg viewBox="55 35 915 955" width="296" height="309" aria-hidden="true">
     <defs><filter id="sx-blur" x="-30%" y="-80%" width="160%" height="260%"><feGaussianBlur stdDeviation="7"/></filter></defs>
     <image class="sx-plate" href="assets/success/plate.webp" width="1024" height="1024"/>
     <g filter="url(#sx-blur)" fill="#1d2a55">${Object.entries(SHADOW).map(([k, [cx, cy, rx, ry, a]]) => `<ellipse class="sx-sh" data-k="${k}" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" transform="rotate(${a} ${cx} ${cy})" opacity="0"/>`).join('')}</g>
     <g class="sx" data-k="leaf">${img('leaf')}</g><g class="sx" data-k="bottle">${img('bottle')}</g>
-    <g class="sx" data-k="bowl">${img('bowl')}<g class="sx" data-k="avocado">${img('avocado')}</g></g>
+    <g class="sx" data-k="bowl">${img('bowl')}<g class="sx" data-k="lettuce">${img('lettuce')}</g><g class="sx" data-k="salmon">${img('salmon')}</g><g class="sx" data-k="avocado">${img('avocado')}</g><g class="sx" data-k="chickpeas">${img('chickpeas')}</g>${img('bowl-front')}</g>
     <g class="sx" data-k="scale">${img('scale')}<path class="sx-needle" d="${needlePath}" fill="#3466d6"/></g>
     <g class="sx" data-k="dumbbell">${img('dumbbell')}</g></svg>`;
-  const SX = Object.fromEntries([...W.el.querySelectorAll('.sx')].map((el) => { const k = el.dataset.k, [x, y, w, h] = SL[k];
+  const SX = Object.fromEntries([...W.el.querySelectorAll('.sx')].map((el) => { const k = el.dataset.k, [x, y, w, h] = k === 'bowl' ? BOWL_BOX : SL[k];
     return [k, { el, k, bb: { x, y, width: w, height: h }, bx: x + w / 2, by: y + h, cx: x + w / 2, cy: y + h / 2, td: null, tr: null }]; }));
   const needle = W.el.querySelector('.sx-needle'), sxPlate = W.el.querySelector('.sx-plate');
   W.el.querySelectorAll('.sx-sh').forEach((e) => { SX[e.dataset.k].sh = e; });
   // шапка экрана «Цели» — те же предметы, неподвижно
   W.goals.querySelector('.gs-art').innerHTML = (() => { const at = (k, x, y, sc = 0.3) => { const [, , w, h] = SL[k]; return `<image href="assets/success/l-${k}.webp" x="${x}" y="${y}" width="${(w * sc).toFixed(1)}" height="${(h * sc).toFixed(1)}"/>`; };
     // предметы по бокам заголовка и ниже кнопок «Назад» и «i»
-    return at('scale', 6, 104) + at('dumbbell', 40, 182) + at('leaf', 112, 98) + at('bottle', 334, 96) + at('bowl', 286, 156) + at('avocado', 286 + (276 - 99) * 0.3, 156 + (420 - 371) * 0.3) +
+    const bowl = `<g transform="translate(286 156) scale(0.3) translate(${-BOWL_BOX[0]} ${-BOWL_BOX[1]})">${['bowl', 'lettuce', 'salmon', 'avocado', 'chickpeas', 'bowl-front'].map(img).join('')}</g>`;
+    return at('scale', 6, 104) + at('dumbbell', 40, 182) + at('leaf', 112, 98) + at('bottle', 334, 96) + bowl +
       `<path d="${needlePath}" fill="#3466d6" transform="translate(${(6 - 634 * 0.3).toFixed(1)} ${(104 - 406 * 0.3).toFixed(1)}) scale(0.3)"/>`; })();
 
   // Движение предметов — по времени, а не на пружинах: у каждого трюка своя короткая траектория.
@@ -647,6 +657,9 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     flip: { T: 1.15, f: (p) => { if (p < 0.78) { const q = p / 0.78; return { y: -115 * 4 * q * (1 - q), spin: 360 * easeIO(q) }; } const [sx, sy] = squash((p - 0.78) / 0.22, 1.2); return { sx, sy }; } },
     wobble: { T: 1.3, f: (p) => ({ r: 16 * Math.exp(-3.2 * p) * Math.sin(13 * p) }) },
     nudge: { T: 0.5, f: (p) => { const [sx, sy] = squash(p, 0.45); return { sx, sy }; } },
+    rustle: { T: 1.0, f: (p) => ({ r: 5 * Math.exp(-3 * p) * Math.sin(16 * p) }) },                         // салат шелестит от основания
+    pop: { T: 0.6, f: (p) => { if (p < 0.62) { const q = p / 0.62; return { y: -34 * 4 * q * (1 - q) }; } const [sx, sy] = squash((p - 0.62) / 0.38, 0.8); return { sx, sy }; } },   // нут подпрыгивает
+    flop: { T: 0.75, f: (p) => { if (p < 0.6) { const q = p / 0.6; return { y: -30 * 4 * q * (1 - q), r: -9 * Math.sin(Math.PI * q) }; } const [sx, sy] = squash((p - 0.6) / 0.4, 0.7); return { sx, sy }; } },   // сёмга шлёпается
   };
   let needleA = 0, weighAt = null, weighFrom = -50, succOn = false, trickTimer = 0;
   const play = (k, move) => { SX[k].tr = { move, t0: clock }; wake(); };
@@ -671,7 +684,9 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   };
   // по одному трюку, по кругу: бутылка делает сальто, гантель подпрыгивает, авокадо качается, весы взвешивают.
   // Первый — через 1,4 с после появления, дальше раз в 2,6 с: одновременно двигается только один предмет.
-  const TRICKS = [() => play('bottle', 'flip'), () => play('dumbbell', 'hop'), () => { play('avocado', 'wobble'); play('bowl', 'nudge'); }, () => { weigh(-28); play('scale', 'nudge'); }];
+  // в миске «что-то происходит» каскадом: салат шелестит, подпрыгивает нут, шлёпается сёмга, качается авокадо
+  const bowlStir = () => { play('bowl', 'nudge'); play('lettuce', 'rustle'); later(() => play('chickpeas', 'pop'), 110); later(() => play('salmon', 'flop'), 230); later(() => play('avocado', 'wobble'), 360); };
+  const TRICKS = [() => play('bottle', 'flip'), () => play('dumbbell', 'hop'), () => bowlStir(), () => { weigh(-28); play('scale', 'nudge'); }];
   const tricks = (i, wait = 2600) => { trickTimer = setTimeout(() => { if (state !== 'final') return; TRICKS[i % TRICKS.length](); tricks(i + 1); }, wait * SLOW); };
   const resetSuccess = () => { clearTimeout(trickTimer); succOn = false; weighAt = null; needleA = 0; Object.values(SX).forEach((o) => { o.td = null; o.tr = null; o.el.style.opacity = 0; }); sxPlate.style.opacity = 0; };
 
@@ -718,9 +733,9 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     sxPlate.style.opacity = 1;
     const at = (k, move, d) => { SX[k].td = { move, t0: clock + d }; };            // clock — время сцены, ?slow уже учтён
     at('bottle', 'drop', 0.04); at('bowl', 'drop', 0.12); at('scale', 'drop', 0.2); at('dumbbell', 'drop', 0.28); at('leaf', 'float', 0.1);
-    at('avocado', 'nudge', 0.12);                                                  // авокадо лежит в миске и падает вместе с ней
+    ['lettuce', 'salmon', 'avocado', 'chickpeas'].forEach((k) => at(k, 'nudge', 0.12));       // продукты лежат в миске и падают вместе с ней
     later(() => weigh(-50), 200 + 330);                                            // весы сели — стрелка взвешивает
-    later(() => { play('avocado', 'wobble'); }, 120 + 330);                        // миска села — авокадо качнулось
+    later(bowlStir, 120 + 330);                                                    // миска села — продукты в ней качнулись
     later(confetti, 280 + 330);
     later(() => W.el.classList.add('shown'), 420);
     tricks(0, 1400);
@@ -768,7 +783,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     const TO = { bowl: 'meal', bottle: 'water', dumbbell: 'fire', scale: 'scales' };
     clearTimeout(trickTimer);
     Object.values(SX).forEach((o) => {
-      if (o.k === 'avocado') return;                                               // летит вместе с миской
+      if (['lettuce', 'salmon', 'avocado', 'chickpeas'].includes(o.k)) return;      // летят вместе с миской
       const [x, y] = centre(o.el), f = coin(o, x, y, 1, 1, SK);
       o.el.style.visibility = 'hidden';
       if (!TO[o.k]) { retire(f); return; }
