@@ -1,0 +1,145 @@
+/* ---------- Анкета «Параметры для расчёта» → «Цели настроены» → экран «Цели» ----------
+   Разметка и тексты — по записи экрана продукта: 8 шагов, полоска шагов сверху, «Далее» внизу. */
+.wiz {
+  --soft: #edf2ff; --line: #dee8ff; --grey: #8a8f99;
+  position: absolute; z-index: 12; inset: 0; background: #fff;
+  visibility: hidden; opacity: 0; transition: opacity 260ms ease, visibility 0s 260ms;
+  pointer-events: none;      /* закрытая анкета не ловит нажатия: текущий шаг внутри неё видим сам по себе */
+}
+.wiz.on { visibility: visible; opacity: 1; transition: opacity 340ms ease; pointer-events: auto; }
+.wiz .time { color: #222; }
+.wz-status { position: absolute; inset: 0 0 auto 0; height: 54px; }
+.wz-nav { position: absolute; z-index: 3; top: 64px; left: 24px; right: 24px; height: 24px; display: flex; justify-content: space-between; }
+.wz-nav button, .wz-x { width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.wz-nav svg, .wz-x svg { display: block; }
+
+/* полоска шагов: пройденные — короткие синие, текущий — длинный синий, впереди — короткие бледные */
+.wz-bar { position: absolute; z-index: 3; top: 104px; left: 16px; right: 16px; height: 5px; display: flex; gap: 4px; }
+.wz-bar i {
+  flex: 1 1 0; height: 5px; border-radius: 3px; background: #dfe8ff;
+  transition: flex-grow 420ms var(--ease-drawer), background-color 200ms ease, opacity 200ms ease, transform 360ms var(--ease-out);
+}
+.wz-bar i.done, .wz-bar i.cur { background: var(--blue); }
+.wz-bar i.cur { flex-grow: 4.2; }
+.wz-bar i.wait { opacity: 0; transform: scaleY(0); }        /* до прилёта цели деления нет */
+.wz-bar.gone { opacity: 0; transition: opacity 200ms ease; }
+
+/* шаги едут как экраны в навигации iOS: новый справа, прежний уходит на треть влево */
+.wz-steps { position: absolute; top: 109px; left: 0; right: 0; bottom: 0; overflow: hidden; }
+.wz-step {
+  position: absolute; inset: 0; padding: 26px 16px 120px; overflow-y: auto; scrollbar-width: none;
+  transform: translateX(100%); visibility: hidden;
+  transition: transform 420ms var(--ease-drawer), opacity 300ms ease, visibility 0s 420ms;
+}
+.wz-step::-webkit-scrollbar { display: none; }
+.wz-step.cur { transform: none; visibility: visible; transition: transform 420ms var(--ease-drawer), opacity 300ms ease; }
+.wz-step.past { transform: translateX(-30%); opacity: 0; }
+.wz-step.rise { transform: translateY(14px); opacity: 0; visibility: visible; transition: none; }   /* первый шаг всплывает, а не въезжает */
+
+.wz-head { padding: 20px 24px 22px; border-radius: 24px; background: var(--soft); }
+.wz-head h2 { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; line-height: 24px; }
+.wz-head h2 img { width: 20px; height: 20px; }
+.wz-head p { margin-top: 8px; font-size: 14px; line-height: 20px; color: #2a2d33; }
+.wz-tag { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 6px 12px; border-radius: 14px; background: #fff; font-size: 13px; line-height: 18px; }
+
+.wz-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 24px; }
+.wz-f { padding: 10px 14px 11px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+.wz-f.wide { grid-column: 1 / -1; margin-top: 4px; }
+.wz-f span { display: block; font-size: 12px; line-height: 16px; color: var(--grey); }
+.wz-f b { display: block; margin-top: 2px; font-size: 16px; font-weight: 400; line-height: 22px; }
+
+.wz-opts { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
+.wz-opt { position: relative; padding: 16px 16px 16px 52px; border: 0; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); text-align: left; cursor: pointer; }
+.wz-opt::before { content: ""; position: absolute; left: 16px; top: 18px; width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px #c9cfdb; transition: box-shadow 160ms ease; }
+.wz-opt.on::before { box-shadow: inset 0 0 0 1.5px var(--blue), inset 0 0 0 5px #fff, inset 0 0 0 10px var(--blue); }
+.wz-opt b { display: block; font-size: 16px; font-weight: 600; line-height: 22px; }
+.wz-opt span { display: block; margin-top: 2px; font-size: 15px; line-height: 21px; color: var(--grey); }
+
+.wz-num { display: flex; align-items: center; justify-content: space-between; margin-top: 56px; }
+.wz-pm { width: 56px; height: 56px; border: 0; border-radius: 18px; background: var(--soft); color: var(--blue); font-size: 28px; line-height: 1; cursor: pointer; }
+.wz-val { font-size: 52px; font-weight: 600; line-height: 60px; font-feature-settings: "lnum" 1, "tnum" 1; white-space: nowrap; }
+.wz-val small { margin-left: 4px; font-size: 16px; font-weight: 400; color: var(--grey); }
+.wz-ruler { display: block; margin: 22px auto 0; }
+.wz-chips { display: flex; justify-content: center; gap: 6px; margin-top: 22px; }
+.wz-chip { padding: 9px 14px; border: 0; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); font-size: 15px; line-height: 20px; cursor: pointer; }
+.wz-chip.on { box-shadow: inset 0 0 0 1.5px var(--blue); }
+.wz-ok { display: flex; width: max-content; align-items: center; gap: 8px; margin: 18px auto 0; padding: 6px 12px; border-radius: 14px; background: #e8f6ec; font-size: 14px; line-height: 20px; }
+.wz-macro { margin-top: 24px; padding: 16px 16px 6px; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); }
+.wz-macro h3 { font-size: 18px; font-weight: 600; line-height: 24px; }
+.wz-mrow { display: flex; justify-content: space-between; margin-top: 16px; font-size: 15px; line-height: 20px; }
+.wz-mrow em { font-style: normal; color: var(--grey); }
+.wz-track { position: relative; height: 4px; margin: 14px 4px 10px; border-radius: 2px; background: var(--soft); }
+.wz-track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: #5a55f0; }
+.wz-track i::after { content: ""; position: absolute; right: -8px; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #5a55f0; }
+.wz-wheel { position: relative; margin: 24px 24px 0; display: grid; grid-template-columns: 1fr 1fr; text-align: center; font-size: 22px; line-height: 44px; color: #c3c8d2; }
+.wz-wheel::before { content: ""; position: absolute; inset: 88px -8px auto; height: 44px; border-radius: 12px; background: #f2f4f8; z-index: -1; }
+.wz-wheel .sel { color: var(--ink); }
+
+.wz-foot { position: absolute; z-index: 4; left: 16px; right: 16px; bottom: 34px; display: flex; gap: 8px; }
+.wz-foot .btn { flex: 1; }
+.wz-foot #wz-skip { flex: 0 0 auto; width: 140px; display: none; }
+.wz-foot.skip #wz-skip { display: block; }
+.wiz.final .wz-foot, .wiz.final .wz-steps, .wiz.final .wz-nav { opacity: 0; pointer-events: none; transition: opacity 200ms ease; }
+
+/* ---------- «Ваши ежедневные цели настроены» ---------- */
+.wz-done {
+  position: absolute; inset: 0; z-index: 2; overflow-y: auto; scrollbar-width: none;
+  padding: 0 16px 120px; text-align: center;
+  background: linear-gradient(180deg, #fff 0%, #f1f7ff 30%, #e4f2fb 62%, #eaf6e9 100%);
+  visibility: hidden; opacity: 0; transition: opacity 300ms ease, visibility 0s 300ms;
+}
+.wz-done::-webkit-scrollbar { display: none; }
+.wiz.final .wz-done { visibility: visible; opacity: 1; transition: opacity 300ms ease; }
+.wz-done .wz-x { position: absolute; top: 64px; right: 24px; }
+.wz-art { position: relative; width: 300px; height: 236px; margin: 76px auto 0; }
+.wz-art svg { position: absolute; inset: 0; overflow: visible; }
+.wz-art .piece { visibility: hidden; }
+.wz-art .piece.on { visibility: visible; }
+/* цель села на место: короткое сжатие-растяжение от точки опоры */
+.wz-art .pop { transform-box: fill-box; transform-origin: 50% 100%; }
+.wz-art .piece.land .pop { animation: wz-land 460ms var(--ease-out); }
+@keyframes wz-land { 0% { transform: scale(1.14, .84); } 40% { transform: scale(.95, 1.06); } 100% { transform: none; } }
+.wz-title { display: flex; flex-direction: column; align-items: center; margin-top: 8px; }
+.wz-title span { padding: 2px 12px 4px; border-radius: 12px; background: var(--blue); color: #fff; font-size: 26px; font-weight: 600; line-height: 34px; }
+.wz-title span + span { margin: -4px 0 0 64px; }
+.wz-done > p { margin: 18px 8px 0; font-size: 16px; line-height: 22px; }
+.wz-done .rise { opacity: 0; transform: translateY(12px); transition: opacity 320ms ease, transform 420ms var(--ease-out); }
+.wiz.final.shown .wz-done .rise { opacity: 1; transform: none; }
+.wiz.final.shown .wz-done .rise:nth-of-type(2) { transition-delay: 60ms; }
+.wz-done .goal-cards { margin-top: 24px; }
+.wz-done-foot { position: absolute; z-index: 3; left: 16px; right: 16px; bottom: 34px; visibility: hidden; opacity: 0; transition: opacity 300ms ease; }
+.wiz.final.shown .wz-done-foot { visibility: visible; opacity: 1; }
+
+/* карточки целей: на финале анкеты и на экране «Цели» */
+.goal-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; }
+.gcard { padding: 16px; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1px #dee8ff; }
+.gcard.wide { grid-column: 1 / -1; }
+.gcard h4 { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; line-height: 22px; }
+.gcard h4 img, .wz-head h2 img { width: 20px; height: 20px; opacity: .45; }   /* в продукте значки здесь бледные */
+.gcard .v { margin-top: 18px; font-size: 40px; font-weight: 600; line-height: 44px; font-feature-settings: "lnum" 1, "tnum" 1; }
+.gcard .v small { margin-left: 4px; font-size: 16px; font-weight: 400; color: #8a8f99; }
+.gcard .bju { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 16px; font-size: 16px; line-height: 22px; }
+.gcard .bju i { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; }
+.gcard .bju b { display: block; margin-top: 10px; font-size: 18px; font-weight: 600; }
+.gcard .bju b small { margin-left: 2px; font-size: 13px; font-weight: 400; color: #8a8f99; }
+
+/* ---------- Экран «Цели» из профиля ---------- */
+.goalscr {
+  position: absolute; z-index: 20; inset: 0; background: #fff; overflow: hidden;
+  transform: translateX(100%); visibility: hidden;
+  transition: transform 420ms var(--ease-drawer), visibility 0s 420ms;
+}
+.screen[data-view="goals"] .goalscr { transform: none; visibility: visible; transition: transform 480ms var(--ease-drawer); }
+.screen[data-view="goals"] .intro { transform: translateX(-28%); opacity: 0; }
+.gs-scroll { position: absolute; inset: 0; overflow-y: auto; scrollbar-width: none; padding: 0 16px 108px; background: linear-gradient(180deg, #fff 0%, #f1f7ff 45%, #e4f2fb 75%, #eaf6e9 100%); }
+.gs-scroll::-webkit-scrollbar { display: none; }
+.gs-top { position: relative; height: 236px; margin: 0 -16px; overflow: hidden; }
+.gs-top > .gs-art { position: absolute; left: 0; top: 0; }
+.gs-top h2 { position: absolute; left: 0; right: 0; top: 136px; text-align: center; font-size: 34px; font-weight: 600; line-height: 40px; }
+.gs-top .wz-nav { top: 64px; }
+.goalscr .goal-cards { margin-top: 4px; }
+.goalscr .p-tabbar { z-index: 3; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wiz, .wz-step, .wz-bar i, .wz-done, .wz-done .rise, .goalscr { transition-duration: 1ms !important; }
+}

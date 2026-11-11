@@ -1,5 +1,5 @@
 // Покадровая запись ролика 9:16 с управляемым временем: node tools/shoot.js
-// Кадры → .shots/frames, ролик → media/motion.mp4
+// Кадры → .shots/frames, ролик → media/motion.mp4. Весь путь: шторка → анкета → финал → медали → экран «Цели»
 const puppeteer = require('puppeteer-core');
 const path = require('path');
 const fs = require('fs');
@@ -9,8 +9,10 @@ const ROOT = path.join(__dirname, '..');
 const FRAMES = path.join(ROOT, '.shots', 'frames');
 const URL = require('url').pathToFileURL(path.join(ROOT, 'index.html')).href;
 const FPS = 30;
-const SECONDS = 8.0;      // профиль → шторка → покой с намёком → палец на «Продолжить» → отпустили → предметы в медалях
-const DOWN_AT = 5.3, UP_AT = 5.8;
+const SECONDS = 14.9;     // профиль → шторка → покой с намёком → «Продолжить» → цели в полоску шагов → анкета → финал → медали → «Цели»
+const DOWN_AT = 4.5, UP_AT = 4.9;
+// нажатия по ходу ролика: [секунда, селектор]
+const TAPS = [6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0].map((t) => [t, '#wz-next']).concat([[12.2, '#wz-done'], [14.1, '#goals']]);
 
 (async () => {
   fs.rmSync(FRAMES, { recursive: true, force: true });
@@ -54,6 +56,7 @@ const DOWN_AT = 5.3, UP_AT = 5.8;
     }, type);
     if (f === Math.round(DOWN_AT * FPS)) await finger('pointerdown');
     if (f === Math.round(UP_AT * FPS)) await finger('pointerup');
+    for (const [t, q] of TAPS) if (f === Math.round(t * FPS)) await page.evaluate((q) => document.querySelector(q).click(), q);
     await page.evaluate((dt) => window.__tick(dt), 1000 / FPS);
     await page.screenshot({ path: path.join(FRAMES, 'f' + String(f).padStart(4, '0') + '.jpg'), type: 'jpeg', quality: 95 });
     if (f % 30 === 0) process.stdout.write((f / FPS).toFixed(0) + 's ');

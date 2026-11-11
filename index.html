@@ -194,6 +194,7 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
 }
 </style>
 <link rel="stylesheet" href="stats.css">
+<link rel="stylesheet" href="wizard.css">
 </head>
 <body>
 <div class="fit">
@@ -294,6 +295,7 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
 document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.length) document.documentElement.classList.add('sb'); }).catch(() => {});
 </script>
 <script src="stats.js"></script>
+<script src="wizard.js"></script>
 <script>
 (() => {
   const params = new URLSearchParams(location.search);
@@ -490,6 +492,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     Object.values(medals).forEach((m) => { jump(m.s, 1); m.el.classList.remove('on'); });
     art.classList.remove('press', 'lift');
     profile.classList.remove('set');
+    W.reset(); Object.values(fin).forEach((p) => p.el.classList.remove('on', 'land'));
     idle = 0;
   };
 
@@ -515,12 +518,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
       if (!idle && road.x > 0.995 && stride.x < 0.02 && !MOCK) { idle = 1; hintOn(2400); }
     }
     for (const f of flights) {
-      if (f.done || Math.hypot(f.x.x - f.dx, f.y.x - f.dy) > 1.5) continue;
-      f.done = true;
-      f.m.el.classList.add('on'); kick(f.m.s, 2.4, SPRING.medal);
-      f.el.classList.add('gone');
-      setTimeout(() => { f.el.remove(); drop(f.x, f.y, f.s); flights = flights.filter((x) => x !== f); }, 160 * SLOW);
-      if (flights.every((x) => x.done)) later(() => { profile.classList.add('set'); setState('set'); }, 120);
+      if (!f.armed || f.done || Math.hypot(f.x.x - f.dx, f.y.x - f.dy) > 1.5) continue;
+      f.done = true; if (f.land) f.land(f);
     }
   };
   const close = () => {
@@ -561,42 +560,116 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     return { x: (r.left - a.left) / s, y: (r.top - a.top) / s, w: r.width / s, h: r.height / s };
   };
 
-  // Отпустили: бегун толкается вперёд (свой такт, 200 мс), затем цели срываются с картинки и падают в медали «Мои цели», шторка уходит.
+  // ---------- Полёты целей ----------
+  // Цель срывается копией в слой .fly и летит на пружинах: по вертикали быстрее, вбок медленнее — путь дугой.
+  const K = 338 / 1254, NSV = 'http://www.w3.org/2000/svg';
+  const W = window.Wizard, segs = W.segs;
+  const coin = (g, cx, cy, s0) => {
+    const bb = g.bb || (g.bb = g.el.getBBox());
+    const w = (bb.width + 8) * K, h = (bb.height + 8) * K;
+    const el = document.createElement('div'); el.className = 'coin';
+    el.innerHTML = `<svg viewBox="${bb.x - 4} ${bb.y - 4} ${bb.width + 8} ${bb.height + 8}" width="${w.toFixed(1)}" height="${h.toFixed(1)}"></svg>`;
+    const copy = g.el.cloneNode(true); copy.removeAttribute('transform'); copy.removeAttribute('id'); copy.style.opacity = 1; copy.style.visibility = 'visible';
+    el.firstChild.appendChild(copy);
+    Object.assign(el.style, { left: (cx - w / 2) + 'px', top: (cy - h / 2) + 'px', width: w + 'px', height: h + 'px', transformOrigin: '50% 50%' });
+    fly.appendChild(el);
+    const f = { el, g, w, h, cx, cy, x: spring(0, 0.3, SPRING.flyX), y: spring(0, 0.3, SPRING.flyY), s: spring(s0, 0.002, SPRING.shrink), dx: 0, dy: 0, armed: false, done: false, land: null };
+    flights.push(f); draw(); return f;
+  };
+  const launch = (f, tx, ty, ts, delay, land) => {
+    f.dx = tx - f.cx; f.dy = ty - f.cy; f.land = land;
+    later(() => { f.armed = true; aim(f.x, f.dx); aim(f.y, f.dy); aim(f.s, ts); }, delay);
+  };
+  const retire = (f) => { f.done = true; f.el.classList.add('gone'); setTimeout(() => { f.el.remove(); drop(f.x, f.y, f.s); flights = flights.filter((x) => x !== f); }, 160 * SLOW); };
+  const centre = (el) => { const r = pt(el); return [r.x + r.w / 2, r.y + r.h / 2]; };
+
+  // Цели и шаги анкеты: каждая цель — деление своего шага. Флажок — финиш, в последнее деление.
+  const SEG = Object.fromEntries(W.steps.map((st, i) => [st.obj, i]).filter(([o]) => o));
+  SEG.flag = W.steps.length - 1;
+  const OBJ = ['scale', 'bowl', 'shoe', 'bottle', 'bars', 'moon', 'flag'];
+  const MEDALS = Object.keys(medals);
+  // те же предметы, собранные в картинку: на финале анкеты и в шапке экрана «Цели». [центр x, y, масштаб]
+  const pieces = (svgEl, layout, shown) => Object.fromEntries(Object.entries(layout).map(([n, [cx, cy, sc]]) => {
+    const g = byName[n], bb = g.bb || (g.bb = g.el.getBBox());
+    const p = document.createElementNS(NSV, 'g'); p.setAttribute('class', shown ? 'piece on' : 'piece');
+    p.setAttribute('transform', `translate(${cx} ${cy}) scale(${(K * sc).toFixed(4)}) translate(${-(bb.x + bb.width / 2)} ${-(bb.y + bb.height / 2)})`);
+    const pop = document.createElementNS(NSV, 'g'); pop.setAttribute('class', 'pop');
+    [...g.el.childNodes].forEach((c) => pop.appendChild(c.cloneNode(true)));
+    p.appendChild(pop); svgEl.appendChild(p);
+    return [n, { el: p, s: sc }];
+  }));
+  W.el.querySelector('.wz-art').innerHTML = '<svg viewBox="0 0 300 236" width="300" height="236"></svg>';
+  const fin = pieces(W.el.querySelector('.wz-art svg'), { flag: [70, 54, 1.25], moon: [238, 32, 1.5], bottle: [150, 86, 1.25], bowl: [70, 146, 1.2], scale: [232, 140, 1.25], shoe: [112, 206, 1.15], bars: [196, 194, 1.2] });
+  pieces(W.goals.querySelector('.gs-art'), { scale: [46, 130, 1.15], bars: [118, 108, 0.75], shoe: [84, 204, 1], moon: [272, 106, 1.3], bottle: [350, 134, 1], bowl: [312, 206, 1] }, true);
+
+  // Отпустили «Продолжить». В продукте здесь крутится загрузка, а потом открывается анкета из 8 шагов.
+  // Вместо пустой загрузки: бегун толкается, цели срываются с картинки и встают в полоску шагов анкеты —
+  // каждая в деление своего шага, деление появляется, когда цель до него долетает. Анкета проступает поверх шторки.
   const finish = () => {
     if (state !== 'open' && state !== 'down') return;
     clear(); hintOff(); setState('flying'); idle = 0;
-    if (calm) {
-      Object.values(medals).forEach((m) => m.el.classList.add('on'));
-      profile.classList.add('set'); jump(sy, OFF); draw(); setState('set'); return;
-    }
+    W.reset();
+    if (calm) { W.el.classList.add('on'); jump(sy, OFF); draw(); setState('wizard'); return; }
     art.classList.remove('press');
     aim(btn, 1, SPRING.back);
     goals.forEach((g) => { g.fl = null; });
     aim(road, 1, [0.2, 1]); goals.forEach(grow); aim(stride, 0, [0.2, 1]);   // нажали посреди появления — сцена быстро дособирается
     pose({ lean: -2, bob: -6, arm: -9, front: 5, back: -4, head: 1.5, px: 34, py: -44 }, SPRING.push);
-    const order = ['meal', 'water', 'fire', 'walk', 'sleep', 'scales'];
+    segs.forEach((sg, i) => { if (i >= 2) sg.classList.add('wait'); });
+    const first = W.el.querySelector('.wz-step'); first.classList.add('rise');
     later(() => {
       art.classList.add('lift');
-      const k = 338 / 1254;
-      order.forEach((key, i) => {
-        const g = goals.find((x) => x.goal === key), m = medals[key];
-        const r = pt(g.el), bb = g.el.getBBox();
-        const el = document.createElement('div'); el.className = 'coin';
-        const box = `${bb.x - 4} ${bb.y - 4} ${bb.width + 8} ${bb.height + 8}`;
-        const copy = g.el.cloneNode(true); copy.removeAttribute('transform'); copy.removeAttribute('id'); copy.style.opacity = 1;
-        el.innerHTML = `<svg viewBox="${box}" width="${((bb.width + 8) * k).toFixed(1)}" height="${((bb.height + 8) * k).toFixed(1)}"></svg>`;
-        el.firstChild.appendChild(copy);
-        const w = (bb.width + 8) * k, h = (bb.height + 8) * k, x0 = r.x + r.w / 2 - w / 2, y0 = r.y + r.h / 2 - h / 2;
-        Object.assign(el.style, { left: x0 + 'px', top: y0 + 'px', width: w + 'px', height: h + 'px', transformOrigin: '50% 50%' });
-        fly.appendChild(el); g.el.style.visibility = 'hidden';
-        const mp = pt(m.el), dx = mp.x + mp.w / 2 - (x0 + w / 2), dy = mp.y + mp.h / 2 - (y0 + h / 2);
-        const f = { el, m, x: spring(0, 0.3, SPRING.flyX), y: spring(0, 0.3, SPRING.flyY), s: spring(r.w / w, 0.002, SPRING.shrink), dx, dy, done: false };
-        flights.push(f);
-        later(() => { aim(f.x, dx); aim(f.y, dy); aim(f.s, 24 / Math.max(w, h)); }, i * 35);
+      OBJ.forEach((n, i) => {
+        const g = byName[n], r = pt(g.el), f = coin(g, r.x + r.w / 2, r.y + r.h / 2, 1);
+        g.el.style.visibility = 'hidden';
+        const sg = segs[SEG[n]], [tx, ty] = centre(sg);
+        launch(f, n === 'flag' ? tx + sg.offsetWidth * 0.35 : tx, ty, 10 / Math.max(f.w, f.h), i * 45, () => { sg.classList.remove('wait'); retire(f); });
       });
-      aim(sy, OFF, SPRING.away);
-      draw();
+      later(() => W.el.classList.add('on'), 120);                       // анкета проступает, когда цели уже в воздухе
+      later(() => first.classList.remove('rise'), 380);
+      later(() => { jump(sy, OFF); draw(); setState('wizard'); }, 520);
     }, 200);
+  };
+
+  // Последний «Далее»: цели выходят из своих делений и собираются в картинку «Ваши ежедневные цели настроены».
+  W.on.final = () => {
+    if (state !== 'wizard') return;
+    setState('final');
+    const from = Object.fromEntries(OBJ.map((n) => [n, centre(segs[SEG[n]])]));
+    W.el.classList.add('final'); W.el.querySelector('.wz-bar').classList.add('gone');
+    if (calm) { Object.values(fin).forEach((p) => p.el.classList.add('on')); W.el.classList.add('shown'); return; }
+    OBJ.forEach((n, i) => {
+      const p = fin[n], [x, y] = from[n], f = coin(byName[n], n === 'flag' ? x + 10 : x, y, 0.02);
+      const [tx, ty] = centre(p.el);
+      launch(f, tx, ty, p.s, 80 + i * 60, () => { p.el.classList.add('on', 'land'); retire(f); });
+    });
+    later(() => W.el.classList.add('shown'), 420);
+  };
+  // «Отлично»: анкета гаснет, под ней профиль; цели с картинки падают в свои медали «Мои цели», те заливаются.
+  const settle = () => { profile.classList.add('set'); setState('set'); };
+  W.on.done = () => {
+    if (state !== 'final') return;
+    setState('landing');
+    if (calm) { MEDALS.forEach((k) => medals[k].el.classList.add('on')); W.el.classList.remove('on'); settle(); return; }
+    OBJ.forEach((n) => {
+      const p = fin[n], g = byName[n], [x, y] = centre(p.el), f = coin(g, x, y, p.s);
+      p.el.classList.remove('on', 'land');
+      if (!g.goal) { retire(f); return; }
+      const m = medals[g.goal], [tx, ty] = centre(m.el);
+      launch(f, tx, ty, 24 / Math.max(f.w, f.h), MEDALS.indexOf(g.goal) * 40, () => {
+        m.el.classList.add('on'); kick(m.s, 2.4, SPRING.medal); retire(f);
+        if (flights.every((x) => x.done)) later(settle, 120);
+      });
+    });
+    W.el.classList.remove('on');
+  };
+  // Закрыли анкету, не дойдя до конца: цели ещё не настроены, медали пустые.
+  W.on.close = () => {
+    if (state !== 'wizard') return;
+    W.el.classList.remove('on'); setState('closed');
+    goals.forEach((g) => { g.el.style.visibility = ''; });
+    Object.values(rig).forEach((r) => jump(r, 0));
+    art.classList.remove('lift'); draw();
   };
 
   const inside = (e) => { const r = go.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom; };
@@ -612,15 +685,17 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   $('#later').addEventListener('click', close);
   $('.close').addEventListener('click', close);
   dim.addEventListener('click', close);
-  $('#goals').addEventListener('click', () => { if (state === 'set') view('stats'); else if (state === 'closed') open(); });
+  $('#goals').addEventListener('click', () => { if (state === 'set') view('goals'); else if (state === 'closed') open(); });
+  $('#gs-back').addEventListener('click', () => view('intro'));
+  $('#gs-tab-stats').addEventListener('click', () => view('stats'));
   $('#tab-stats').addEventListener('click', () => view('stats'));
   document.getElementById('stats').addEventListener('click', (e) => { if (e.target.closest('img[alt="Профиль"]')) view('intro'); });
   $('#replay').addEventListener('click', enter);
 
-  if (params.get('screen') === 'stats') { reset(); profile.classList.add('set'); Object.values(medals).forEach((m) => m.el.classList.add('on')); setState('set'); draw(); view('stats'); }
+  if (params.get('screen') === 'stats' || params.get('screen') === 'goals') { reset(); profile.classList.add('set'); Object.values(medals).forEach((m) => m.el.classList.add('on')); setState('set'); draw(); view(params.get('screen')); }
   else if (params.has('hold')) { reset(); setState('open'); jump(sy, 0); idle = MOCK ? 0 : 1; draw(); if (!MOCK) { wake(); hintOn(); } }
   else enter();
-  window.__motion = { sy, btn, road, stride, goals, medals, rig, state: () => state, finish };
+  window.__motion = { sy, btn, road, stride, goals, medals, rig, state: () => state, finish, flights: () => flights.length };
 })();
 </script>
 </body>
