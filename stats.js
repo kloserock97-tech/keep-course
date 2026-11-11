@@ -221,14 +221,15 @@
     const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (calm) { el.classList.add('gone'); return; }
     const b = BUBBLES.find((x) => x.id === id), field = root.querySelector('[data-pond]');
-    el.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.14)', opacity: 1, offset: 0.35 }, { transform: 'scale(.5)', opacity: 0 }], { duration: 260, easing: 'ease-out' }).finished.then(() => el.classList.add('gone'));
+    // лопается наружу и сразу гаснет; composite: 'add' — поверх покачивания, без скачка
+    el.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.16)', opacity: 0 }], { duration: 180, easing: 'cubic-bezier(.23, 1, .32, 1)', composite: 'add', fill: 'forwards' }).finished.then(() => el.classList.add('gone'));
     for (let i = 0; i < 7; i++) {
       const p = document.createElement('i'); p.className = 'spl spl-' + b.kind; field.appendChild(p);
       const a = (i / 7) * Math.PI * 2 + 0.4, r = b.d / 2 + 10 + (i % 2) * 8;
       p.animate([
         { transform: `translate(${b.x}px, ${b.y}px) scale(1)`, opacity: 0.9 },
         { transform: `translate(${(b.x + Math.cos(a) * r).toFixed(1)}px, ${(b.y + Math.sin(a) * r + 6).toFixed(1)}px) scale(.3)`, opacity: 0 },
-      ], { delay: 70, duration: 420, easing: 'cubic-bezier(.23, 1, .32, 1)', fill: 'backwards' }).finished.then(() => p.remove());
+      ], { duration: 420, easing: 'cubic-bezier(.23, 1, .32, 1)', fill: 'backwards' }).finished.then(() => p.remove());
     }
   };
 

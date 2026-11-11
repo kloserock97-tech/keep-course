@@ -9,7 +9,7 @@ const FIG = path.join(ROOT, '.shots', 'f3-s1.png');
   const browser = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--hide-scrollbars'] });
   const page = await browser.newPage();
   await page.setViewport({ width: 393, height: 844, deviceScaleFactor: 3 });
-  await page.goto(require('url').pathToFileURL(path.join(ROOT, 'index.html')).href + '?bare&hold&h=844', { waitUntil: 'networkidle0' });
+  await page.goto(require('url').pathToFileURL(path.join(ROOT, 'index.html')).href + '?bare&hold&mock&h=844', { waitUntil: 'networkidle0' });
   await page.evaluate(() => document.fonts.ready);
   await new Promise((r) => setTimeout(r, 600));
   await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important}' });
