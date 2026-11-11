@@ -113,7 +113,7 @@
           </div>
         </div>` : ''}
 
-        <div class="card w">
+        <div class="card w" data-card="meal">
           <div class="w-top"><img src="${A}meal.svg" alt=""><span class="wname">Питание</span></div>
           <div class="num"><b data-n="kcal">${nf(s.kcal)}</b><span>/</span><span class="u"><i>${nf(GOAL.kcal)}</i><i>ккал</i></span><span class="left" data-left="kcal"></span></div>
           <div class="bju">
@@ -123,7 +123,7 @@
           ${day.today ? '<button class="add" type="button" data-do="meal" aria-label="Записать еду"><img src="' + A + 'plus.svg" alt="" width="17.5" height="17.5"></button>' : ''}
         </div>
 
-        <div class="card w">
+        <div class="card w" data-card="act">
           <div class="w-top"><img src="${A}fire.svg" alt=""><span class="wname">Активность</span></div>
           <div class="num"><b data-n="act">${nf(s.act)}</b><span>/</span><span class="u"><i>${GOAL.act}</i><i>ккал</i></span></div>
           <div class="barrow"><div class="bar"><b data-bar="act"></b></div><em><span data-pct="act"></span><span>%</span></em></div>
@@ -135,17 +135,17 @@
         </div>
 
         <div class="grid">
-          <div class="card tile">
+          <div class="card tile" data-card="water">
             <div class="w-top"><img src="${A}water.svg" alt=""><span class="wname">Вода</span></div>
             <div class="num"><b data-n="water">${dec(s.water)}</b><span>/</span><span class="u"><i>2</i><i>л</i></span></div>
             <div class="drops" data-drops></div>
           </div>
-          <div class="card tile">
+          <div class="card tile" data-card="steps">
             <div class="w-top"><img src="${A}steps.svg" alt=""><span class="wname">Шаги</span></div>
             <div class="num"><b data-n="steps">${nf(s.steps)}</b><span>/</span><span>10 000</span></div>
             <div class="bar"><b data-bar="steps"></b></div>
           </div>
-          <div class="card tile">
+          <div class="card tile" data-card="sleep">
             <div class="w-top"><img src="${A}sleep.svg" alt=""><span class="wname">Сон</span></div>
             <div class="num"><b>${Math.floor(s.sleep / 60)}</b><span>ч</span><b>${s.sleep % 60}</b><span>мин</span></div>
             <div class="bar"><b data-bar="sleep"></b></div>
@@ -200,7 +200,7 @@
     const h = hero(), box = root.querySelector('[data-swap]');
     if (animate && box.querySelector('[data-h="sub"]').textContent !== h.sub) {
       box.classList.add('out');
-      setTimeout(() => { Object.entries(h).forEach(([k, v]) => { box.querySelector(`[data-h="${k}"]`).textContent = v; }); box.classList.remove('out'); }, 420);
+      setTimeout(() => { Object.entries(h).forEach(([k, v]) => { box.querySelector(`[data-h="${k}"]`).textContent = v; }); box.classList.remove('out'); }, 170);
     } else Object.entries(h).forEach(([k, v]) => { box.querySelector(`[data-h="${k}"]`).textContent = v; });
   };
 
@@ -233,16 +233,17 @@
   };
 
   const sheet = (open) => root.classList.toggle('sheet-open', open);
+  const flash = (...keys) => keys.forEach((k) => { const el = root.querySelector(`[data-card="${k}"]`); if (!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); });
 
   const act = (key, bub) => {
     if (!day.today || done[key]) return;
     if (key === 'meal') { sheet(true); return; }
-    if (key === 'walk') { s.act += 160; s.steps += 4700; s.train += 40; done.walk = true; pop('walk'); }
+    if (key === 'walk') { s.act += 160; s.steps += 4700; s.train += 40; done.walk = true; pop('walk'); flash('act', 'steps'); }
     if (key === 'water') {
       const id = bub || ['w1', 'w2', 'w3'].find((w) => !popped.has(w));
-      s.glasses += 1; s.water = +(s.water + 0.2).toFixed(1); if (s.glasses >= 3) done.water = true; pop(id);
+      s.glasses += 1; s.water = +(s.water + 0.2).toFixed(1); if (s.glasses >= 3) done.water = true; pop(id); flash('water');
     }
-    if (key === 'sleep') { done.sleep = true; pop('sleep'); }
+    if (key === 'sleep') { done.sleep = true; pop('sleep'); flash('sleep'); }
     mood([['think', 420]]);
     sync();
   };
@@ -258,7 +259,7 @@
       const m = DINNERS[+opt.dataset.opt];
       s.kcal += m.add[0]; s.p += m.add[1]; s.f += m.add[2]; s.c += m.add[3];
       done.meal = `${m.add[0]} ккал, ${m.add[1]} г белка`;
-      sheet(false); setTimeout(() => { pop('meal'); mood([['think', 420]]); sync(); }, 260);
+      sheet(false); setTimeout(() => { pop('meal'); flash('meal'); mood([['think', 420]]); sync(); }, 260);
       return;
     }
     if (e.target.closest('.st-dim')) sheet(false);

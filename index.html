@@ -86,9 +86,9 @@ body.bare { background: #fff; }
 .l { position: absolute; }
 .l img { display: block; width: 100%; height: 100%; }
 
-/* появление фона: облака, точки и пустые кружки мягко проявляются волной */
-.in { opacity: 0; transform: scale(.94); transition: opacity 420ms var(--ease-out) var(--d, 0ms), transform 520ms var(--ease-out) var(--d, 0ms); }
-.art:not([data-state="pre"]) .in { opacity: 1; transform: none; }
+/* фон иллюстрации только проявляется: это декорация, двигаться ей незачем */
+.in { opacity: 0; transition: opacity 360ms ease var(--d, 0ms); }
+.art:not([data-state="pre"]) .in { opacity: 1; }
 
 /* фоновый цикл: облака плывут, точки покачиваются */
 @keyframes drift { from { transform: translateX(calc(var(--a, 6px) * -1)); } to { transform: translateX(var(--a, 6px)); } }
@@ -101,47 +101,53 @@ body.bare { background: #fff; }
 }
 .token img { position: relative; }
 
-/* рука с жетоном */
+/* Рука с галочкой. Ею управляет кнопка: каждое состояние — просто положение руки,
+   а переходы между ними можно прервать в любой момент. */
 .hand-move {
   position: absolute; inset: 0;
-  opacity: 0; transform: translate(-56px, -64px);
-  transition: transform 300ms var(--ease-out), opacity 220ms var(--ease-out);
+  opacity: 0; transform: translate(-200px, 40px);
+  transition: transform 260ms var(--ease-out), opacity 200ms ease;
 }
-.art[data-state="idle"] .hand-move { opacity: 1; transform: none; transition: transform 820ms var(--ease-out) var(--hd, 0ms), opacity 380ms var(--ease-out) var(--hd, 0ms); }
-.art:is([data-state="enter"], [data-state="toss"], [data-state="carry"]) .hand-move { opacity: 1; transform: none; transition: none; }   /* здесь рукой управляет сценарий */
-/* отклик на нажатие начинается сразу: ease-out, без разгона */
-.art[data-state="placing"] .hand-move { opacity: 1; transform: translate(28.57px, 62.20px); transition: transform 300ms var(--ease-out); }
-/* дело сделано — рука уходит тем же путём, каким пришла */
-.art[data-state="placed"] .hand-move { opacity: 0; transform: translate(-56px, -64px); transition: transform 640ms var(--ease-in-out) 160ms, opacity 260ms ease 420ms; }
+.art:is([data-state="enter"], [data-state="idle"], [data-state="lean"], [data-state="down"], [data-state="placing"]) .hand-move { opacity: 1; }
+.art[data-state="enter"] .hand-move { transform: none; transition: none; }                                   /* вход ведёт сценарий */
+.art[data-state="idle"] .hand-move { transform: none; }
+.art[data-state="idle"].hint .hand-move { transform: translate(5px, 11px); transition-duration: 420ms; }       /* редкий намёк: рука примеряется */
+.art[data-state="lean"] .hand-move { transform: translate(4px, 9px); transition-duration: 200ms; }             /* курсор над кнопкой */
+.art[data-state="down"] .hand-move { transform: translate(16px, 35px); transition-duration: 130ms; }           /* палец на кнопке: рука уже опускает галочку */
+.art[data-state="placing"] .hand-move { transform: translate(28.57px, 62.2px); transition-duration: 140ms; }   /* отпустили: галочка встаёт */
+.art[data-state="placed"] .hand-move { opacity: 0; transform: translate(-56px, -64px); transition: transform 520ms var(--ease-in-out) 120ms, opacity 240ms ease 340ms; }
+.art[data-state="rearm"] .hand-move { opacity: 0; transform: translate(-200px, 40px); transition: transform 320ms var(--ease-in-out), opacity 200ms ease 120ms; }
 
-/* цикл покоя: покачивание и раз в шесть секунд рука опускает галочку на полпути к пустому кружку */
-@keyframes float {
-  0%, 100% { transform: translate(0, -2.5px) rotate(-.9deg); }
-  40% { transform: translate(0, 2.5px) rotate(.9deg); }
-  50%, 53% { transform: translate(11px, 24px) rotate(.2deg); }
-  66% { transform: translate(0, 2px) rotate(.7deg); }
-}
-.hand-float { position: absolute; inset: 0; transform-origin: 80px 40px; }
-.art:is([data-state="idle"], [data-state="toss"], [data-state="carry"], [data-state="placing"], [data-state="placed"]) .hand-float { animation: float 6s ease-in-out infinite; }
-.art:is([data-state="toss"], [data-state="carry"], [data-state="placing"], [data-state="placed"]) .hand-float { animation-play-state: paused; }
-@keyframes wait { 0%, 42%, 62%, 100% { transform: none; } 51% { transform: scale(1.07); } }
+/* покой: рука едва покачивается; пока её ведёт кнопка — замирает */
+@keyframes float { from { transform: translateY(-2px) rotate(-.7deg); } to { transform: translateY(2px) rotate(.7deg); } }
+.hand-float { position: absolute; inset: 0; transform-origin: 80px 40px; animation: float 5s ease-in-out infinite alternate; }
+.art:is([data-state="lean"], [data-state="down"], [data-state="placing"], [data-state="placed"]) .hand-float { animation-play-state: paused; }
 .ring-4 { left: 229px; top: 197px; width: 78px; height: 78px; }
 .ring-4 img { position: absolute; left: 0; top: 0; transition: opacity 420ms ease; }
-.ring-4 .clean { left: 5px; top: 5px; width: 68px; height: 68px; }
-.ring-4 .lit { display: none; }
-.art[data-state="idle"] .ring-4 img { animation: wait 6s ease-in-out infinite; }
+.ring-4 .clean { left: 5px; top: 5px; width: 68px; height: 68px; opacity: 0; }
+.art[data-state="placed"] .ring-4 .clean, .art[data-state="rearm"] .ring-4 .clean { opacity: 1; }
+.art[data-state="placed"] .ring-4 .lit, .art[data-state="rearm"] .ring-4 .lit { opacity: 0; }
+.ring-4 { transition: transform 200ms var(--ease-out), opacity 360ms ease; }
+.art[data-state="idle"].hint .ring-4 { transform: scale(1.04); transition-duration: 420ms; }
+.art[data-state="lean"] .ring-4 { transform: scale(1.03); }
+.art[data-state="down"] .ring-4 { transform: scale(1.08); transition-duration: 130ms; }
+/* пустые кружки первых трёх дней: видны только на входе, до галочек */
+.ghost { opacity: 0; }
+/* кнопка «вздыхает» вместе с намёком руки — чуть приподнимается, а не продавливается */
+.btn-wrap { transition: transform 420ms var(--ease-out); }
+.art[data-state="idle"].hint ~ .sheet .btn-wrap { transform: scale(1.018); }
+/* нажатие: кнопка и рука двигаются одним движением, поэтому масштаб кнопки привязан к тому же состоянию */
+.art[data-state="down"] ~ .sheet .btn-wrap { transform: scale(.97); transition-duration: 130ms; }
+.btn-primary:active { transform: none; }
 
 .hand { left: 46px; top: 11px; width: 229px; height: 175px; }
-/* мяч в руке: виден, только пока рука несёт его к кружку */
-.held { opacity: 0; transition: opacity 110ms ease; }
-.held .orb { display: block; width: 55.6px; height: 55.6px; margin: 1.2px; border-radius: 50%; background: var(--blue); }
-.art:is([data-state="carry"], [data-state="placing"]) .held { opacity: 1; transition: none; }
+.held { transition: opacity 110ms ease; }
+.art[data-state="placed"] .held { opacity: 0; }
 
-/* мяч: тот же синий, что у кнопки, — потому что он и есть кнопка */
-.ball { position: absolute; z-index: 6; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; opacity: 0; pointer-events: none; }
-.ball div { width: 100%; height: 100%; }
-.ball div div { border-radius: 50%; background: var(--blue); }
-.cf { position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; opacity: 0; pointer-events: none; }
+.glow-wrap { transition: opacity 180ms ease, transform 180ms var(--ease-out); }
+@keyframes breathe { from { opacity: .88; transform: scale(.99); } to { opacity: 1; transform: scale(1.02); } }
+.glow { animation: breathe 2.4s ease-in-out infinite alternate; }
+.art[data-state="placed"] .glow-wrap { opacity: 0; transform: scale(1.3); }
 
 /* четвёртая галочка встаёт на место с лёгкой посадкой */
 @keyframes land { 0% { opacity: 0; transform: scale(.9); } 55% { opacity: 1; transform: scale(1.07); } 100% { opacity: 1; transform: none; } }
@@ -190,20 +196,6 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
 @media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: #2460e6; } }
 .home { position: absolute; z-index: 1; left: 50%; bottom: 8px; margin-left: -72px; width: 144px; height: 5px; border-radius: 3px; background: #000; }
 
-/* Репетиция нажатия. Раз в шесть секунд рука опускает галочку на полпути к кружку,
-   и кнопка в тот же миг продавливается, будто её нажали. Два предмета двигаются вместе — глаз их связывает. */
-.btn-wrap { transform-origin: 50% 50%; }
-.btn-primary { position: relative; overflow: hidden; }
-.btn-primary::after { content: ""; position: absolute; inset: 0; background: #0b2f8f; opacity: 0; pointer-events: none; }
-@keyframes rehearse { 0%, 43%, 66%, 100% { transform: none; } 50%, 53% { transform: scale(.955); } 60% { transform: scale(1.012); } }
-@keyframes rehearse-shade { 0%, 43%, 60%, 100% { opacity: 0; } 50%, 53% { opacity: .16; } }
-.art[data-state="idle"] ~ .sheet .btn-wrap { animation: rehearse 6s ease-in-out infinite; }
-.art[data-state="idle"] ~ .sheet .btn-primary::after { animation: rehearse-shade 6s ease-in-out infinite; }
-
-/* строки текста выезжают из-за своей нижней кромки — со стороны кнопки */
-.ln { display: block; overflow: hidden; padding-bottom: 3px; margin-bottom: -3px; }
-.ln > span { display: block; }
-
 .replay {
   position: fixed; right: 20px; bottom: 20px; padding: 10px 16px; border-radius: 999px; border: 0;
   font: 600 14px/20px var(--font); color: #3b4354; background: #fff; cursor: pointer;
@@ -213,8 +205,8 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
 .no-anim, .no-anim * { transition: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cloud img, .dot img, .hand-float, .ring-4 img, .btn-wrap, .btn-primary::after { animation: none !important; }
-  .in, .hand-move, .token-4 { transform: none !important; }
+  .cloud img, .dot img, .hand-float, .glow { animation: none !important; }
+  .in, .hand-move, .token-4, .ring-4, .btn-wrap { transform: none !important; }
   .art[data-state="placed"] .ripple, .art[data-state="placed"] .ring-5, .art[data-state="placed"] .dot { animation: none; }
 }
 </style>
@@ -228,32 +220,37 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
 
       <div class="intro">
       <div class="art" data-state="pre" aria-hidden="true">
-        <div class="l cloud in" style="left:15px;top:117px;width:134px;height:75px;--d:0ms;--t:12s;--a:7px"><img src="assets/art/cloud-a.webp" alt=""></div>
-        <div class="l cloud in" style="left:234px;top:31px;width:125px;height:75px;--d:60ms;--t:14s;--a:-6px;--o:-4s"><img src="assets/art/cloud-b.webp" alt=""></div>
-        <div class="l cloud in" style="left:97px;top:300px;width:106px;height:55px;--d:120ms;--t:10s;--a:-5px;--o:-2s"><img src="assets/art/cloud-c.webp" alt=""></div>
-        <div class="l cloud in" style="left:234px;top:288px;width:110px;height:63px;--d:160ms;--t:13s;--a:6px;--o:-7s"><img src="assets/art/cloud-d.webp" alt=""></div>
+        <div class="l cloud in" style="left:15px;top:117px;width:134px;height:75px;--d:0ms;--t:14s;--a:7px"><img src="assets/art/cloud-a.webp" alt=""></div>
+        <div class="l cloud in" style="left:234px;top:31px;width:125px;height:75px;--d:0ms;--t:14s;--a:-6px;--o:-4s"><img src="assets/art/cloud-b.webp" alt=""></div>
+        <div class="l cloud in" style="left:97px;top:300px;width:106px;height:55px;--d:0ms;--t:10s;--a:-5px;--o:-2s"><img src="assets/art/cloud-c.webp" alt=""></div>
+        <div class="l cloud in" style="left:234px;top:288px;width:110px;height:63px;--d:0ms;--t:13s;--a:6px;--o:-7s"><img src="assets/art/cloud-d.webp" alt=""></div>
 
-        <div class="l dot in" style="left:41px;top:86px;width:20px;height:19px;--d:200ms;--i:3;--t:4.4s"><img src="assets/art/dot-1.webp" alt=""></div>
-        <div class="l dot in" style="left:272px;top:88px;width:19px;height:19px;--d:260ms;--i:1;--t:5.2s;--o:-2s"><img src="assets/art/dot-2.webp" alt=""></div>
-        <div class="l dot in" style="left:343px;top:146px;width:20px;height:19px;--d:320ms;--i:0;--t:4.8s;--o:-1s"><img src="assets/art/dot-3.webp" alt=""></div>
-        <div class="l dot in" style="left:334px;top:301px;width:19px;height:20px;--d:380ms;--i:2;--t:5.6s;--o:-3s"><img src="assets/art/dot-4.webp" alt=""></div>
-        <div class="l dot in" style="left:48px;top:326px;width:20px;height:19px;--d:440ms;--i:4;--t:4.2s;--o:-2.5s"><img src="assets/art/dot-5.webp" alt=""></div>
+        <div class="l dot in" style="left:41px;top:86px;width:20px;height:19px;--d:0ms;--i:3;--t:4.4s"><img src="assets/art/dot-1.webp" alt=""></div>
+        <div class="l dot in" style="left:272px;top:88px;width:19px;height:19px;--d:0ms;--i:1;--t:5.2s;--o:-2s"><img src="assets/art/dot-2.webp" alt=""></div>
+        <div class="l dot in" style="left:343px;top:146px;width:20px;height:19px;--d:0ms;--i:0;--t:4.8s;--o:-1s"><img src="assets/art/dot-3.webp" alt=""></div>
+        <div class="l dot in" style="left:334px;top:301px;width:19px;height:20px;--d:0ms;--i:2;--t:5.6s;--o:-3s"><img src="assets/art/dot-4.webp" alt=""></div>
+        <div class="l dot in" style="left:48px;top:326px;width:20px;height:19px;--d:0ms;--i:4;--t:4.2s;--o:-2.5s"><img src="assets/art/dot-5.webp" alt=""></div>
 
-        <div class="l in ring-4" style="--d:230ms"><img class="clean" src="assets/art/ring-4.webp" alt=""><img class="lit" src="assets/art/ring-4-lit.webp" alt=""></div>
-        <div class="l in ring-5" style="left:303px;top:193px;width:68px;height:68px;--d:280ms"><img src="assets/art/ring-5.webp" alt=""></div>
+        <div class="l in ring-4" style="--d:0ms"><img class="clean" src="assets/art/ring-4.webp" alt=""><img class="lit" src="assets/art/ring-4-lit.webp" alt=""></div>
+        <div class="l in ring-5" style="left:303px;top:193px;width:68px;height:68px;--d:40ms"><img src="assets/art/ring-5.webp" alt=""></div>
 
-        <div class="l token in" style="left:28px;top:227px;width:75px;height:76px;--d:80ms;--w:2"><img src="assets/art/token-1.webp" alt=""></div>
-        <div class="l token in" style="left:96px;top:216px;width:76px;height:76px;--d:130ms;--w:1"><img src="assets/art/token-2.webp" alt=""></div>
-        <div class="l token in" style="left:165px;top:207px;width:73px;height:74px;--d:180ms;--w:0"><img src="assets/art/token-3.webp" alt=""></div>
+        <div class="l ghost" style="left:31.5px;top:231.2px;width:68px;height:68px"><img src="assets/art/ring-5.webp" alt=""></div>
+        <div class="l ghost" style="left:99.8px;top:220.3px;width:68px;height:68px"><img src="assets/art/ring-5.webp" alt=""></div>
+        <div class="l ghost" style="left:167.6px;top:209.75px;width:68px;height:68px"><img src="assets/art/ring-5.webp" alt=""></div>
+
+        <div class="l token" style="left:28px;top:227px;width:75px;height:76px;--w:2"><img src="assets/art/token-1.webp" alt=""></div>
+        <div class="l token" style="left:96px;top:216px;width:76px;height:76px;--w:1"><img src="assets/art/token-2.webp" alt=""></div>
+        <div class="l token" style="left:165px;top:207px;width:73px;height:74px;--w:0"><img src="assets/art/token-3.webp" alt=""></div>
 
         <div class="l ripple"></div>
         <div class="l token token-4"><img src="assets/art/token-3.webp" alt=""></div>
 
-        <div class="hand-move" style="--hd:300ms">
+        <div class="hand-move">
           <div class="hand-float">
+            <div class="l glow-wrap" style="left:189px;top:123px;width:102px;height:102px"><img class="glow" src="assets/art/glow.webp" alt=""></div>
             <div class="l hand"><img src="assets/art/hand.webp" alt=""></div>
             <div class="l" style="left:222px;top:127px;width:46px;height:44px"><img src="assets/art/fingertip.webp" alt=""></div>
-            <div class="l held" style="left:211px;top:145px;width:58px;height:58px"><span class="orb"></span></div>
+            <div class="l held" style="left:211px;top:145px;width:58px;height:58px"><img src="assets/art/token-held.webp" alt=""></div>
             <div class="l" style="left:208px;top:142px;width:63px;height:63px"><img src="assets/art/thumb.webp" alt=""></div>
           </div>
         </div>
@@ -273,8 +270,8 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
 
       <section class="sheet">
         <div class="copy">
-          <h1><span class="ln"><span>Поможем сохранить курс</span></span></h1>
-          <p><span class="ln"><span>Итоги недели, ваш прогресс и</span></span><span class="ln"><span>рекомендации будут приходить, даже</span></span><span class="ln"><span>когда приложение закрыто. Управлять</span></span><span class="ln"><span>уведомлениями можно в профиле.</span></span></p>
+          <h1>Поможем сохранить курс</h1>
+          <p>Итоги недели, ваш прогресс и<br>рекомендации будут приходить, даже<br>когда приложение закрыто. Управлять<br>уведомлениями можно в профиле.</p>
         </div>
         <div class="actions">
           <div class="btn-wrap"><button class="btn btn-primary" id="connect" type="button">
@@ -288,7 +285,6 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
         </div>
       </section>
       <div class="home" aria-hidden="true"></div>
-      <div class="ball" aria-hidden="true"><div><div></div></div></div>
       </div>
       <section class="stats" id="stats" aria-label="Статистика"></section>
     </main>
@@ -327,146 +323,100 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const screen = document.querySelector('.screen');
   const view = (v) => { screen.dataset.view = v; };
 
-  const intro = document.querySelector('.intro');
-  const ball = intro.querySelector('.ball'), ballY = ball.firstElementChild, ballS = ballY.firstElementChild;
-  const hand = art.querySelector('.hand-move');
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let anims = [];
+  const hand = art.querySelector('.hand-move');
+  const OUT = 'cubic-bezier(.23, 1, .32, 1)';
+  let anims = [], hintTimer = 0;
   const play = (el, frames, opts) => { const a = el.animate(frames, { fill: 'backwards', ...opts }); anims.push(a); return a; };
+  const settle = () => { anims.forEach((a) => { try { a.finish(); } catch (e) { /* уже завершена */ } }); anims = []; };
   const stop = () => { anims.forEach((a) => a.cancel()); anims = []; };
-  const tx = (v) => `translateX(${v.toFixed(1)}px)`, ty = (v) => `translateY(${v.toFixed(1)}px)`;
-  const UP = 'cubic-bezier(.2, .7, .4, 1)', DOWN = 'cubic-bezier(.55, 0, .9, .5)', OUT = 'cubic-bezier(.23, 1, .32, 1)';
-  // центры трёх первых дней и место галочки в руке — в координатах иллюстрации
-  const AX = 2, AY = 111.4;                                   // сдвиг иллюстрации на экране
-  const DAYS = [[65.52, 265.2], [133.77, 254.28], [201.63, 243.75]], HOLE = [268.3, 235.95], HELD = [239.75, 173.75];
-  const scr = ([x, y]) => [AX + x, AY + y];
-  const button = () => { const s = +getComputedStyle(document.documentElement).getPropertyValue('--s') || 1, io = intro.getBoundingClientRect(), r = connect.getBoundingClientRect(); return { x: (r.left - io.left) / s, y: (r.top + r.height / 2 - io.top) / s, w: r.width / s }; };
-  const COLORS = ['#f17c59', '#49d1c0', '#ffd24a', '#a9dc4c'];
 
-  // конфетти в цветах точек с иллюстрации
-  const confetti = (x, y, delay, n = 3, far = 20) => {
-    for (let i = 0; i < n; i++) {
-      const d = document.createElement('i'); d.className = 'cf'; d.style.background = COLORS[(i + Math.round(x)) % 4]; art.appendChild(d);
-      const a = (-150 + (120 / Math.max(1, n - 1)) * i) * Math.PI / 180 + (n > 3 ? i : 0), r = far + (i % 2) * 6;
-      const an = play(d, [
-        { opacity: 0, transform: `translate(${x}px, ${y}px) scale(.4)` }, { opacity: 1, offset: 0.15 },
-        { opacity: 0, transform: `translate(${(x + Math.cos(a) * r).toFixed(1)}px, ${(y + Math.sin(a) * r).toFixed(1)}px) scale(1)` },
-      ], { delay, duration: 460, easing: OUT, fill: 'none' });
-      an.finished.then(() => d.remove(), () => d.remove());
-    }
+  // Редкий намёк: рука чуть опускает галочку к пустому кружку, кнопка «вздыхает» вместе с ней.
+  // Первый раз — через 2,6 с покоя, дальше раз в 7 с. Любое касание кнопки намёк отменяет.
+  const hintOff = () => { clearTimeout(hintTimer); art.classList.remove('hint'); };
+  const hintOn = (wait = 2600) => {
+    hintOff();
+    if (calm) return;
+    hintTimer = setTimeout(() => {
+      if (art.dataset.state !== 'idle') return;
+      art.classList.add('hint');
+      hintTimer = setTimeout(() => { art.classList.remove('hint'); hintOn(7000); }, 520);
+    }, wait);
   };
 
-  // Появление. Синий мяч скачет по трём отмеченным дням: они его держат и пружинят.
-  // Четвёртый день пустой — это дыра. Мяч проваливается сквозь кружок, падает вниз и расплющивается в кнопку.
-  // Из кнопки строка за строкой выходит текст. Рука появляется последней и замирает над дырой: готова помочь.
+  // Вход — один жест, 680 мс, и он ничего не загораживает: текст и кнопки стоят с первого кадра.
+  // Рука проходит слева над тремя днями, и каждый отмечается в тот миг, когда галочка оказывается над ним.
   const enter = () => {
-    clear(); stop();
+    clear(); stop(); hintOff();
     connect.classList.remove('is-done');
     view('intro'); window.Stats.reset();
     art.classList.add('no-anim'); set('pre');
     void art.offsetWidth;
     art.classList.remove('no-anim');
-    hand.style.setProperty('--hd', '0ms');
     if (calm) { set('idle'); return; }
     set('enter');
-
-    const P = DAYS.map(scr), H = scr(HOLE), B = button();
-    const T0 = 260, L = [T0 + 230, T0 + 440, T0 + 650], PASS = L[2] + 260, HIT = PASS + 270, D = HIT - T0;
-    const k = (t) => (t - T0) / D;
-    const start = [P[0][0] - 44, P[0][1] - 180];
-
-    play(ball, [{ opacity: 0 }, { opacity: 1, offset: 0.05 }, { opacity: 1, offset: 0.995 }, { opacity: 0 }], { delay: T0, duration: D });
-    play(ball, [
-      { transform: tx(start[0]) }, { transform: tx(P[0][0]), offset: k(L[0]) }, { transform: tx(P[1][0]), offset: k(L[1]) },
-      { transform: tx(P[2][0]), offset: k(L[2]) }, { transform: tx(H[0]), offset: k(PASS) }, { transform: tx(H[0]) },
-    ], { delay: T0, duration: D, composite: 'add' });
-    const hop = (a, b, t0, t1, h = 32) => [
-      { transform: ty(Math.min(a[1], b[1]) - h), offset: k(t0 + (t1 - t0) * 0.46), easing: DOWN },
-      { transform: ty(b[1]), offset: k(t1), easing: UP },
-    ];
-    play(ballY, [
-      { transform: ty(start[1]), easing: DOWN }, { transform: ty(P[0][1]), offset: k(L[0]), easing: UP },
-      ...hop(P[0], P[1], L[0], L[1]), ...hop(P[1], P[2], L[1], L[2]),
-      { transform: ty(Math.min(P[2][1], H[1]) - 40), offset: k(L[2] + 120), easing: DOWN },   // четвёртый прыжок — и мимо: опоры нет
-      { transform: ty(H[1]), offset: k(PASS), easing: 'cubic-bezier(.35, .25, .85, .75)' },
-      { transform: ty(B.y) },
-    ], { delay: T0, duration: D });
-    const squash = (t) => [{ transform: 'scale(.94, 1.08)', offset: k(t - 50) }, { transform: 'scale(1.2, .78)', offset: k(t) }, { transform: 'scale(.93, 1.09)', offset: k(t + 80) }];
-    play(ballS, [{ transform: 'scale(.94, 1.08)' }, ...squash(L[0]), ...squash(L[1]), ...squash(L[2]), { transform: 'scale(.92, 1.1)', offset: k(PASS) }, { transform: 'scale(.82, 1.16)' }], { delay: T0, duration: D });
-
-    // отмеченные дни держат мяч: каждый пружинит под ним, как батут
-    [...art.querySelectorAll('.token.in img')].forEach((img, i) => {
-      play(img, [{ transform: 'none' }, { transform: 'translateY(4px) scale(1.08, .88)', offset: 0.22 }, { transform: 'translateY(-2px) scale(.97, 1.05)', offset: 0.55 }, { transform: 'none' }], { delay: L[i] - 30, duration: 380, fill: 'none', easing: 'ease-out' });
-      confetti(DAYS[i][0], DAYS[i][1] - 18, L[i] + 10);
+    const D = 680, at = [0.08, 0.26, 0.46];                    // доли пути, когда галочка в руке проходит над 1-м, 2-м и 3-м днём
+    play(hand, [
+      { transform: 'translate(-200px, 40px)', opacity: 0 }, { transform: 'translate(-174px, 38px)', opacity: 1, offset: at[0] },
+      { transform: 'translate(-106px, 33px)', offset: at[1] }, { transform: 'translate(-38px, 21px)', offset: at[2] },
+      { transform: 'translate(3px, -3px)', offset: 0.84, easing: 'ease-in-out' }, { transform: 'translate(0, 0)' },
+    ], { duration: D });
+    [...art.querySelectorAll('.token:not(.token-4)')].forEach((t, i) => {
+      const tick = Math.round(D * at[i]) + 20;
+      play(t, [{ opacity: 0, transform: 'scale(.86)' }, { opacity: 1, transform: 'scale(1.06)', offset: 0.5 }, { opacity: 1, transform: 'none' }], { delay: tick, duration: 240, easing: OUT });
+      play(art.querySelectorAll('.ghost')[i], [{ opacity: 1 }, { opacity: 1, offset: tick / (tick + 120) }, { opacity: 0 }], { duration: tick + 120, fill: 'none' });
     });
-    // пустой день не держит: кружок вздрагивает, когда мяч пролетает насквозь
-    play(art.querySelector('.ring-4'), [{ transform: 'none' }, { transform: 'scale(1.2)', offset: 0.3 }, { transform: 'scale(.95)', offset: 0.65 }, { transform: 'none' }], { delay: PASS - 40, duration: 420, fill: 'none', easing: 'ease-out' });
-
-    // мяч расплющивается в кнопку — от точки, куда упал
-    const inL = Math.max(0, H[0] - B.x - 24), inR = Math.max(0, B.x + B.w - H[0] - 24);
-    play(connect, [{ opacity: 0 }, { opacity: 0, offset: 0.999 }, { opacity: 1 }], { duration: HIT, fill: 'none' });
-    play(connect, [{ clipPath: `inset(0 ${inR.toFixed(1)}px 0 ${inL.toFixed(1)}px round 24px)` }, { clipPath: 'inset(0 0px 0 0px round 16px)' }], { delay: HIT, duration: 380, easing: OUT });
-    play(connect.parentElement, [{ transform: 'scale(1.04, .7)' }, { transform: 'scale(.985, 1.1)', offset: 0.42 }, { transform: 'scale(1.005, .98)', offset: 0.72 }, { transform: 'none' }], { delay: HIT, duration: 460, fill: 'none', easing: 'ease-out' });
-    play(connect.querySelector('.ask'), [{ opacity: 0 }, { opacity: 1 }], { delay: HIT + 170, duration: 200 });
-    play(intro.querySelector('.aura'), [{ opacity: 0 }, { opacity: 1 }], { delay: 150, duration: 700 });
-    // текст выходит из кнопки: сначала ближняя к ней строка, заголовок последним
-    [...intro.querySelectorAll('.copy .ln > span')].reverse().forEach((el, i) => play(el, [{ transform: 'translateY(108%)' }, { transform: 'none' }], { delay: HIT + 100 + i * 55, duration: 460, easing: OUT }));
-    play(document.getElementById('later'), [{ opacity: 0, transform: 'translateY(-12px)' }, { opacity: 1, transform: 'none' }], { delay: HIT + 230, duration: 380, easing: OUT });
-
-    // рука приходит, когда мяч уже упал, и замирает над пустым кружком
-    play(hand, [{ opacity: 0 }, { opacity: 1 }], { delay: PASS + 120, duration: 200 });
-    play(hand, [{ transform: 'translate(-66px, -74px)' }, { transform: 'none' }], { delay: PASS + 120, duration: 620, easing: OUT });
-
-    later(() => set('idle'), HIT + 140);
-  };
-  // нажатие во время появления пропускает его
-  intro.addEventListener('pointerdown', () => { if (art.dataset.state !== 'enter') return; anims.forEach((a) => { try { a.finish(); } catch (e) { /* бесконечных тут нет */ } }); clear(); set('idle'); });
-
-  const rearm = (wait) => {              // рука уходит тем же путём, каким пришла, и возвращается
-    set('rearm');
-    connect.classList.remove('is-done');
-    hand.style.setProperty('--hd', '0ms');
-    later(() => set('idle'), wait);
+    play(art.querySelector('.ring-4 .lit'), [{ opacity: 0 }, { opacity: 0, offset: 0.7 }, { opacity: 1 }], { duration: D });
+    play(art.querySelector('.ring-4 .clean'), [{ opacity: 1 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: D });
+    later(() => { if (art.dataset.state === 'enter') { set('idle'); hintOn(); } }, D);
   };
 
-  // «Подключить»: кнопка отдаёт мяч, рука ловит его и ставит в пустой кружок. Дыры больше нет — курс сохранён.
+  const rearm = (wait) => { hintOff(); set('rearm'); connect.classList.remove('is-done'); later(() => { set('idle'); hintOn(); }, wait); };
+
+  // Кнопка ведёт руку. Палец лёг на кнопку — рука уже опускает галочку; отпустили — галочка встаёт;
+  // увели палец в сторону — рука возвращается. Отклик начинается в том же кадре, что и касание.
+  const ready = () => ['idle', 'lean', 'enter'].includes(art.dataset.state);
+  const press = () => { if (!ready()) return false; settle(); clear(); hintOff(); set('down'); return true; };
+  const release = () => { if (art.dataset.state === 'down') { set('idle'); hintOn(4000); } };
   const place = () => {
-    if (art.dataset.state !== 'idle') return;
-    clear();
+    if (!['down', 'idle', 'lean', 'enter'].includes(art.dataset.state)) return;
+    settle(); clear(); hintOff();
     connect.classList.add('is-done');
-    if (calm) { set('placed'); if (!params.has('stay')) later(() => view('stats'), 800); return; }
-    set('toss');
-    const B = button(), from = [B.x + B.w / 2, B.y], to = scr(HELD), FLY = 340;
-    play(connect.parentElement, [{ transform: 'none' }, { transform: 'scale(1.03, .82)', offset: 0.3 }, { transform: 'scale(.99, 1.06)', offset: 0.65 }, { transform: 'none' }], { duration: 360, fill: 'none', easing: 'ease-out' });
-    play(ball, [{ opacity: 1 }, { opacity: 1, offset: 0.985 }, { opacity: 0 }], { duration: FLY, fill: 'none' });
-    play(ball, [{ transform: tx(from[0]) }, { transform: tx(to[0]) }], { duration: FLY, composite: 'add', easing: 'cubic-bezier(.3, .5, .5, 1)', fill: 'none' });
-    play(ballY, [{ transform: ty(from[1]), easing: OUT }, { transform: ty(to[1]) }], { duration: FLY, fill: 'none' });
-    play(ballS, [{ transform: 'scale(.8, 1.2)' }, { transform: 'scale(1)' }], { duration: FLY, fill: 'none', easing: OUT });
-    later(() => {                                   // поймала: от рывка рука чуть проседает вверх по ходу мяча
-      set('carry');
-      play(hand, [{ transform: 'translate(-3px, -7px)' }, { transform: 'none' }], { duration: 170, easing: 'ease-out', fill: 'none' });
-    }, FLY - 12);
-    later(() => set('placing'), FLY + 130);
-    later(() => { set('placed'); confetti(268.3, 228, 60, 6, 34); }, FLY + 130 + 270);
-    if (!params.has('stay')) later(() => view('stats'), FLY + 130 + 270 + 800);
+    set('placing');
+    later(() => set('placed'), calm ? 0 : 130);
+    if (!params.has('stay')) later(() => view('stats'), 1000);
   };
 
-  connect.addEventListener('click', place);
-  // «Позже»: рука уходит, экран закрывается
+  let held = false;
+  connect.addEventListener('pointerdown', (e) => { if (e.button) return; held = press(); if (held) { try { connect.setPointerCapture(e.pointerId); } catch (err) { /* указатель не настоящий */ } } });
+  connect.addEventListener('pointerup', (e) => {
+    if (!held) return; held = false;
+    const r = connect.getBoundingClientRect(), inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (inside) place(); else release();
+  });
+  connect.addEventListener('pointercancel', () => { held = false; release(); });
+  connect.addEventListener('pointermove', (e) => {          // палец съехал с кнопки — рука отступает, вернулся — снова опускает
+    if (!held) return;
+    const r = connect.getBoundingClientRect(), inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside && art.dataset.state === 'down') set('idle'); else if (inside && art.dataset.state === 'idle') set('down');
+  });
+  connect.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && art.dataset.state === 'idle') { hintOff(); set('lean'); } });
+  connect.addEventListener('pointerleave', () => { if (art.dataset.state === 'lean') { set('idle'); hintOn(4000); } });
+  connect.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) press(); });
+  connect.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') place(); });
+  connect.addEventListener('click', (e) => { if (e.detail === 0) place(); });      // нажатие без указателя и клавиш: вспомогательные технологии
+
+  // «Позже»: рука уходит тем же путём, каким пришла, экран закрывается
   document.getElementById('later').addEventListener('click', () => {
-    if (art.dataset.state !== 'idle') return;
-    clear(); set('rearm');
-    if (params.has('stay')) { later(() => set('idle'), 1300); return; }
-    if (!calm) {   // выход зеркалит вход: строки уходят обратно за кромку, кнопка сжимается
-      [...intro.querySelectorAll('.copy .ln > span')].forEach((el, i) => play(el, [{ transform: 'none' }, { transform: 'translateY(108%)' }], { delay: i * 30, duration: 260, easing: 'ease-in', fill: 'forwards' }));
-      play(connect.parentElement, [{ transform: 'none', opacity: 1 }, { transform: 'scale(.9)', opacity: 0 }], { delay: 120, duration: 240, easing: 'ease-in', fill: 'forwards' });
-    }
-    later(() => view('stats'), 420);
+    if (!ready()) return;
+    settle(); clear(); hintOff(); set('rearm');
+    if (params.has('stay')) later(() => { set('idle'); hintOn(); }, 1300); else later(() => view('stats'), 380);
   });
   document.getElementById('replay').addEventListener('click', enter);
 
-  const imgs = [...document.querySelectorAll('.art img, .aura')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
+  const imgs = [...document.querySelectorAll('.art img')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
   Promise.all(imgs).then(() => { if (params.get('screen') === 'stats') { art.classList.add('no-anim'); set('idle'); view('stats'); } else if (!params.has('hold')) enter(); else { art.classList.add('no-anim'); set('idle'); if (params.get('screen') === 'stats') view('stats'); } });
+  window.__place = place;
 })();
 </script>
 </body>

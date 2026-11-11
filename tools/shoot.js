@@ -9,8 +9,8 @@ const ROOT = path.join(__dirname, '..');
 const FRAMES = path.join(ROOT, '.shots', 'frames');
 const URL = require('url').pathToFileURL(path.join(ROOT, 'index.html')).href;
 const FPS = 30;
-const SECONDS = 10.2;      // вход → цикл с «зовом» кружка и ответом кнопки → «Подключить» → галочка на месте
-const TAP_AT = 7.6;
+const SECONDS = 8.2;      // вход → покой с намёком → палец на кнопке → отпустили → галочка на месте
+const DOWN_AT = 5.4, UP_AT = 6.0;
 
 (async () => {
   fs.rmSync(FRAMES, { recursive: true, force: true });
@@ -48,7 +48,12 @@ const TAP_AT = 7.6;
   const total = Math.round(SECONDS * FPS);
   for (let f = 0; f < total; f++) {
     if (f === Math.round(0.2 * FPS)) await page.evaluate(() => document.getElementById('replay').click());
-    if (f === Math.round(TAP_AT * FPS)) await page.evaluate(() => document.getElementById('connect').click());
+    const finger = (type) => page.evaluate((ty) => {
+      const el = document.getElementById('connect'), r = el.getBoundingClientRect();
+      el.dispatchEvent(new PointerEvent(ty, { bubbles: true, pointerId: 7, pointerType: 'touch', button: 0, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+    }, type);
+    if (f === Math.round(DOWN_AT * FPS)) await finger('pointerdown');
+    if (f === Math.round(UP_AT * FPS)) await finger('pointerup');
     await page.evaluate((dt) => window.__tick(dt), 1000 / FPS);
     await page.screenshot({ path: path.join(FRAMES, 'f' + String(f).padStart(4, '0') + '.jpg'), type: 'jpeg', quality: 95 });
     if (f % 30 === 0) process.stdout.write((f / FPS).toFixed(0) + 's ');
