@@ -144,7 +144,13 @@ body.bare { background: #fff; }
 .stage { position: absolute; inset: 0; will-change: transform; }
 .scene { position: absolute; inset: 0; transition: opacity 200ms ease; }
 .scene img { position: absolute; display: block; }
-.scene .full { left: 0; top: 0; width: 338px; height: 338px; }
+.scene .full, .scene .gl { left: 0; top: 0; width: 338px; height: 338px; }
+.scene .gl { position: absolute; display: block; visibility: hidden; }
+/* когда сцена в WebGL готова, картинка-подложка прячется; заплатка из макета запечена в текстуру */
+.art.gl-on .scene .gl { visibility: visible; }
+.art.gl-on .scene img { visibility: hidden; }
+/* пока камера в движении, окна прячутся: предметы в этот момент рисует сама сцена */
+.art.moving .win { visibility: hidden; }
 .moon { position: absolute; left: 296px; top: 27px; width: 34px; height: 34px; will-change: transform; }
 .moon img { display: block; width: 100%; height: 100%; }
 
@@ -161,7 +167,7 @@ body.bare { background: #fff; }
 .art.press .win { --f: 80%; transition-duration: 130ms; }
 .art.press .scene { opacity: .82; transition-duration: 130ms; }
 .art.lift .win { --f: 97%; }
-.art.lift .scene, .art.lift .win[data-name="flag"] { opacity: 0; transition: opacity 240ms ease; }   /* флажок — цель, он остаётся на картинке и тает вместе с ней */
+.art.lift .scene, .art.lift .win[data-name="flag"] { opacity: 0; transition: opacity 320ms ease 200ms; }   /* сначала толчок бегуна, потом картинка тает */   /* флажок — цель, он остаётся на картинке и тает вместе с ней */
 
 .copy { width: 390px; flex: none; padding: 24px 24px 0; display: flex; flex-direction: column; gap: 16px; }
 h1 { font-size: 24px; font-weight: 600; line-height: 29px; }
@@ -273,6 +279,7 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
                 <div class="scene">
                   <img class="full" src="assets/goals/scene.webp" alt="">
                   <img src="assets/goals/retouch.svg" alt="" style="left:73.63px;top:231px;width:18.5px;height:18px">
+                  <canvas class="gl" width="338" height="338"></canvas>
                 </div>
                 <!-- окна: центр и радиус в пунктах картинки; data-goal — в какую медаль полетит предмет -->
                 <div class="win" data-name="flag" data-c="267.9,33.8,14"></div>
@@ -339,6 +346,121 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const MOCK = params.has('mock');
   if (MOCK) art.classList.add('mock');
 
+  // ---------- Сцена в WebGL ----------
+  // Картинка натянута на сетку 100×100. У каждой точки сетки своя глубина и свои «кости»:
+  // камера поворачивается — ближние точки смещаются сильнее дальних (параллакс);
+  // кости двигаются — сетка гнётся вокруг суставов бегуна, без нарезки и без дыр в фоне.
+  const PX = 1254 / 338;                                                       // пикселей исходника в пункте
+  const poly = (...xy) => { const a = []; for (let i = 0; i < xy.length; i += 2) a.push([xy[i] / PX, xy[i + 1] / PX]); return a; };
+  const PART = {                                                               // контуры частей тела в пикселях исходника, опора — сустав
+    head:  { poly: poly(400,330, 430,285, 490,270, 545,290, 562,340, 548,400, 500,428, 440,422, 405,385), pivot: [490 / PX, 425 / PX] },
+    arm:   { poly: poly(290,445, 365,440, 372,500, 345,560, 340,640, 265,648, 252,590, 282,520), pivot: [362 / PX, 462 / PX] },
+    torso: { poly: poly(360,445, 420,412, 560,412, 618,450, 642,520, 642,595, 590,615, 480,615, 400,605, 362,545), pivot: [490 / PX, 620 / PX] },
+    front: { poly: poly(372,592, 560,622, 578,700, 556,800, 522,862, 508,1010, 522,1120, 482,1188, 330,1198, 205,1162, 82,960, 92,878, 190,828, 285,790, 298,700, 342,640), pivot: [470 / PX, 640 / PX] },
+    back:  { poly: poly(548,640, 652,622, 678,760, 668,830, 708,880, 698,922, 572,922, 562,850, 588,780, 558,700), pivot: [600 / PX, 640 / PX] },
+  };
+  const ORDER = ['head', 'arm', 'torso', 'front', 'back'];                    // кто главнее там, где части перекрываются
+  const sdPoly = (x, y, pts) => {                                              // расстояние до контура: внутри плюс, снаружи минус
+    let d = Infinity, inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [ax, ay] = pts[j], [bx, by] = pts[i], ex = bx - ax, ey = by - ay, wx = x - ax, wy = y - ay;
+      const t = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey)));
+      d = Math.min(d, Math.hypot(wx - ex * t, wy - ey * t));
+      if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) inside = !inside;
+    }
+    return inside ? d : -d;
+  };
+  const soft = (sd, f) => { const t = Math.min(1, Math.max(0, (sd + f) / (2 * f))); return t * t * (3 - 2 * t); };
+  const DZ = 150, FOCAL = 520;                                                 // глубина сцены и фокус камеры, pt
+  const depthAt = (x, y, runner, foot) => Math.max(0.06 + 0.56 * Math.pow(Math.min(1, Math.max(0, (y - 40) / 298)), 1.5), runner * 0.74, foot * (0.74 + 0.26 * Math.min(1, Math.max(0, (y - 215) / 100))));
+
+  // камера: поворот вокруг вертикали и горизонтали, приближение к точке картинки.
+  // Считается смещение относительно покоя, поэтому в покое картинка совпадает с макетом пиксель в пиксель.
+  const project = (x, y, d, c) => {
+    const X = x - 169, Y = y - 169, Z = d * DZ;
+    const cy = Math.cos(c.yaw), sy_ = Math.sin(c.yaw), cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
+    const X1 = X * cy + Z * sy_, Z1 = -X * sy_ + Z * cy, Y2 = Y * cp - Z1 * sp, Z2 = Y * sp + Z1 * cp;
+    const s = FOCAL / (FOCAL - Z2), s0 = FOCAL / (FOCAL - Z);
+    return [(X1 * s - X * s0 + X - c.fx) * c.zoom + 169, (Y2 * s - Y * s0 + Y - c.fy) * c.zoom + 169];
+  };
+
+  const GL = (() => {
+    if (calm || MOCK) return null;
+    const cv = art.querySelector('.gl');
+    const gl = cv && cv.getContext('webgl', { alpha: false, antialias: true, preserveDrawingBuffer: true });
+    if (!gl) return null;
+    const N = 100, V = N * N;
+    const rest = new Float32Array(V * 2), pos = new Float32Array(V * 2), uv = new Float32Array(V * 2), depth = new Float32Array(V);
+    const W = ORDER.map(() => new Float32Array(V));
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const k = j * N + i, x = i / (N - 1) * 338, y = j / (N - 1) * 338;
+      rest[2 * k] = x; rest[2 * k + 1] = y; uv[2 * k] = i / (N - 1); uv[2 * k + 1] = j / (N - 1);
+      let left = 1, body = 0, foot = 0;
+      ORDER.forEach((name, b) => {
+        const sd = sdPoly(x, y, PART[name].poly), w = Math.min(left, soft(sd, 5));
+        W[b][k] = w; left -= w;
+        if (name === 'front') foot = soft(sd, 9); else body = Math.max(body, soft(sd, 9));
+      });
+      depth[k] = depthAt(x, y, body, foot);
+    }
+    const idx = new Uint16Array((N - 1) * (N - 1) * 6);
+    for (let j = 0, n = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) { const a = j * N + i; idx.set([a, a + 1, a + N, a + 1, a + N + 1, a + N], n); n += 6; }
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, 'attribute vec2 p;attribute vec2 t;varying vec2 v;void main(){v=t;vec2 c=p/338.*2.-1.;gl_Position=vec4(c.x,-c.y,0.,1.);}'));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, 'precision mediump float;varying vec2 v;uniform sampler2D s;void main(){gl_FragColor=texture2D(s,v);}'));
+    gl.linkProgram(prog); gl.useProgram(prog);
+    const buf = (data, name, usage) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, usage); const l = gl.getAttribLocation(prog, name); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0); return b; };
+    const pbuf = buf(pos, 'p', gl.DYNAMIC_DRAW); buf(uv, 't', gl.STATIC_DRAW);
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+    let ready = false;
+    const size = () => { const r = Math.min(3, Math.round((devicePixelRatio || 1) * (+getComputedStyle(document.documentElement).getPropertyValue('--s') || 1) * 338) / 338); cv.width = cv.height = Math.round(338 * r); gl.viewport(0, 0, cv.width, cv.height); return r; };
+    const img = new Image(); img.src = 'assets/goals/scene.webp';
+    img.decode().then(() => {
+      // текстура ровно под размер холста: в покое точка картинки ложится на точку экрана, как у обычного <img>
+      const r = size(), c2 = document.createElement('canvas'); c2.width = c2.height = cv.width;
+      const g = c2.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, c2.width, c2.height);
+      g.fillStyle = '#FDFEFD'; g.translate(73.63 * r, 231 * r); g.scale(r, r);                     // белая заплатка из макета
+      g.fill(new Path2D('M4.5 15.5L0 11L2.5 3L8.5 0L18.5 3V16.5L8.5 18L4.5 15.5Z'));
+      const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, c2);
+      [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach((p) => gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE));
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      ready = true; art.classList.add('gl-on'); wake();
+    }).catch((e) => console.error('сцена WebGL не запустилась:', e));
+    const bone = (pv, deg, tx, ty, k = 1) => { const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); return (x, y) => { const dx = (x - pv[0]) * k, dy = (y - pv[1]) * k; return [pv[0] + dx * c - dy * s + tx, pv[1] + dx * s + dy * c + ty]; }; };
+    const render = (cam, r) => {
+      if (!ready) return;
+      const body = bone(PART.torso.pivot, r.lean, r.px, r.bob + r.py);
+      const T = [
+        (x, y) => { const p = bone(PART.head.pivot, r.head, 0, 0)(x, y); return body(p[0], p[1]); },
+        (x, y) => { const p = bone(PART.arm.pivot, r.arm, 0, 0)(x, y); return body(p[0], p[1]); },
+        body,
+        bone(PART.front.pivot, r.front, r.px * 0.5, r.bob * 0.35 + r.py * 0.5, 1 + r.reach),
+        bone(PART.back.pivot, r.back, r.px * 0.6, r.bob * 0.6 + r.py * 0.6),
+      ];
+      for (let k = 0; k < V; k++) {
+        let x = rest[2 * k], y = rest[2 * k + 1], dx = 0, dy = 0;
+        for (let b = 0; b < 5; b++) { const w = W[b][k]; if (w > 0.001) { const p = T[b](x, y); dx += w * (p[0] - x); dy += w * (p[1] - y); } }
+        const q = project(x + dx, y + dy, depth[k], cam);
+        pos[2 * k] = q[0]; pos[2 * k + 1] = q[1];
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, pbuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, pos);
+      gl.clearColor(1, 1, 1, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+    };
+    return { render, depthAt: (x, y) => depthAt(x, y, 0, 0) };
+  })();
+
+  // Ракурсы входа: ?cam=goal | step | turn | map. Камера стартует с них и приходит в фронтальный вид.
+  const CAMS = {
+    goal: { yaw: -0.10, pitch: 0.14, zoom: 2.4, fx: 93, fy: -134 },   // от цели к тебе: начинаем у флажка и отъезжаем по дороге назад
+    step: { yaw: 0.06, pitch: -0.30, zoom: 1.7, fx: -80, fy: 95 },    // первый шаг: низко у подошвы, кран вверх и назад
+    turn: { yaw: 0.50, pitch: 0.04, zoom: 1.12, fx: 0, fy: 0 },       // разворот: картинка поворачивается к тебе, слои расходятся
+    map:  { yaw: 0, pitch: 0.55, zoom: 1.2, fx: 0, fy: -20 },         // карта: смотрим сверху на дорогу, камера опускается
+  };
+  const CAM = CAMS[params.get('cam')] ? params.get('cam') : 'goal';
+
   // ---------- Пружины ----------
   // Всё, что отзывается на палец и летит, двигают пружины: при смене цели они сохраняют скорость,
   // поэтому движение не рвётся на стыках. Пара чисел: время отклика, с, и доля затухания (1 — без перелёта).
@@ -355,6 +477,10 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     shrink:[0.46, 1],
     medal: [0.30, 0.45],   // медаль принимает предмет: короткий толчок
     btn:   [0.50, 0.60],   // кнопка «вздыхает» в конце волны
+    cam:   [1.00, 1],      // камера на входе: медленно и без перелёта, как кран
+    pose:  [0.30, 1],      // бегун готовится: палец на кнопке
+    push:  [0.34, 0.78],   // бегун толкается вперёд: отпустили
+    idle:  [0.80, 1],      // бег вполсилы в покое нарастает и гаснет плавно
   };
 
   const all = [];
@@ -369,6 +495,18 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const sy = spring(OFF, 0.05, SPRING.sheet), zoom = spring(1, 0.0003, SPRING.zoom), btn = spring(1, 0.0003, SPRING.touch);
 
   // окна и луна: у каждого свои пружины подскока, масштаба и (у флажка) наклона
+  // камера и бегун
+  const cam = { yaw: spring(0, 0.0005, SPRING.cam), pitch: spring(0, 0.0005, SPRING.cam), zoom: spring(1, 0.0005, SPRING.cam), fx: spring(0, 0.05, SPRING.cam), fy: spring(0, 0.05, SPRING.cam) };
+  const RIG0 = { lean: 0, bob: 0, arm: 0, front: 0, back: 0, reach: 0, head: 0, px: 0, py: 0 };
+  const rig = Object.fromEntries(Object.keys(RIG0).map((k) => [k, spring(0, k === 'reach' ? 0.0003 : 0.01, SPRING.pose)]));
+  const run = spring(0, 0.002, SPRING.idle);
+  const camAt = (c) => Object.entries(c).forEach(([k, v]) => jump(cam[k], v));
+  const camTo = (c, cfg) => Object.entries(c).forEach(([k, v]) => aim(cam[k], v, cfg));
+  const REST = { yaw: 0, pitch: 0, zoom: 1, fx: 0, fy: 0 };
+  const camRest = () => Object.entries(REST).every(([k, v]) => cam[k].x === v && cam[k].v === 0);
+  const pose = (p, cfg) => Object.keys(RIG0).forEach((k) => aim(rig[k], p[k] ?? 0, cfg));
+  let waved = false;
+
   const items = [...art.querySelectorAll('.win, .moon')].map((el, i) => {
     const it = { el, name: el.dataset.name, goal: el.dataset.goal, y: spring(0, 0.01, SPRING.hop), s: spring(1, 0.0003, SPRING.touch), k: spring(0, 0.01, SPRING.flag), ph: i * 1.3 };
     if (el.dataset.c) {
@@ -390,12 +528,25 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     dim.style.opacity = (0.65 * Math.max(0, Math.min(1, 1 - sy.x / OFF))).toFixed(3);
     stage.style.transform = `scale(${zoom.x.toFixed(4)})`;
     btnWrap.style.transform = `scale(${btn.x.toFixed(4)})`;
+    const c = { yaw: cam.yaw.x, pitch: cam.pitch.x, zoom: cam.zoom.x, fx: cam.fx.x, fy: cam.fy.x }, still = camRest();
+    art.classList.toggle('moving', !still);
+    if (GL) {
+      // бег вполсилы: шаг за 2,4 с. Корпус дважды за шаг проседает, рука и ноги ходят навстречу друг другу, голова чуть запаздывает.
+      const ph = clock * 2 * Math.PI / 2.4, a = run.x;
+      GL.render(c, {
+        lean: rig.lean.x + 1 * Math.sin(ph) * a, bob: rig.bob.x + 1.6 * Math.sin(2 * ph) * a,
+        arm: rig.arm.x + 10 * Math.sin(ph + Math.PI) * a, front: rig.front.x + 2.5 * Math.sin(ph) * a, reach: rig.reach.x + 0.035 * Math.sin(ph) * a,
+        back: rig.back.x - 3.5 * Math.sin(ph) * a, head: rig.head.x - 2 * Math.sin(2 * ph + 0.8) * a, px: rig.px.x, py: rig.py.x,
+      });
+    }
+    const mq = GL ? project(313, 44, GL.depthAt(313, 44), c) : [313, 44];
     for (const it of items) {
       const f = Math.sin(clock * 2 * Math.PI / 4.6 + it.ph) * idle;                         // покой: ±1,2 pt за 4,6 с
       if (it.name === 'flag') {
         const w = Math.sin(clock * 2 * Math.PI / 2.2) * idle * 3 + it.k.x;                   // флажок полощется: наклон ±3°
         it.el.style.transform = `skewY(${w.toFixed(2)}deg) scaleX(${(1 - Math.abs(w) * 0.006).toFixed(4)})`;
-      } else it.el.style.transform = `translateY(${(it.y.x + f * 1.2).toFixed(2)}px) scale(${it.s.x.toFixed(4)})`;
+      } else if (it.name === 'moon') it.el.style.transform = `translate(${(mq[0] - 313).toFixed(2)}px, ${(mq[1] - 44 + it.y.x + f * 1.2).toFixed(2)}px) scale(${(it.s.x * c.zoom).toFixed(4)})`;
+      else it.el.style.transform = `translateY(${(it.y.x + f * 1.2).toFixed(2)}px) scale(${it.s.x.toFixed(4)})`;
     }
     for (const fl of flights) fl.el.style.transform = `translate(${fl.x.x.toFixed(2)}px, ${fl.y.x.toFixed(2)}px) scale(${fl.s.x.toFixed(4)})`;
     for (const m of Object.values(medals)) m.el.style.transform = m.s.x === 1 ? '' : `scale(${m.s.x.toFixed(4)})`;
@@ -403,9 +554,10 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const frame = (t) => {
     const dt = Math.min(0.034, last ? (t - last) / 1000 : 1 / 60) / SLOW; last = t; clock += dt;
     for (let n = Math.ceil(dt / 0.004), h = dt / (n || 1); n > 0; n--) for (const s of all) { s.v += (-s.k * (s.x - s.to) - s.c * s.v) * h; s.x += s.v * h; }
-    let moving = idle > 0 && state === 'open';
+    let moving = (idle > 0 || run.x > 0) && (state === 'open' || state === 'down');
     for (const s of all) { if (Math.abs(s.x - s.to) > s.eps || Math.abs(s.v) > s.eps * 30) moving = true; else { s.x = s.to; s.v = 0; } }
     draw(); watch();
+    if (state === 'open' && !waved && camRest()) { waved = true; wave(60); }      // волна — когда камера встала
     if (moving || flights.length) requestAnimationFrame(frame); else { running = false; last = 0; }
   };
   const wake = () => { if (!running) { running = true; last = 0; requestAnimationFrame(frame); } };
@@ -438,7 +590,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     jump(sy, OFF);
     items.forEach((it) => { jump(it.y, 0); jump(it.s, 1); jump(it.k, 0); it.el.style.visibility = ''; });
     Object.values(medals).forEach((m) => { jump(m.s, 1); m.el.classList.remove('on'); });
-    jump(btn, 1); jump(zoom, 1);
+    jump(btn, 1); jump(zoom, 1); camAt(REST); Object.values(rig).forEach((r) => jump(r, 0)); jump(run, 0); waved = false;
     art.classList.remove('press', 'lift');
     profile.classList.remove('set');
     idle = 0;
@@ -451,16 +603,17 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     view('intro');
     setState('open');
     if (calm) { jump(sy, 0); draw(); return; }
-    jump(zoom, 1.06);
-    aim(sy, 0, SPRING.sheet); aim(zoom, 1, SPRING.zoom);
+    // камера стартует с выбранного ракурса и приходит во фронтальный вид; волна пойдёт, когда она встанет
+    waved = false;
+    if (GL) { camAt(CAMS[CAM]); camTo(REST, SPRING.cam); aim(run, 1, SPRING.idle); } else { jump(zoom, 1.06); aim(zoom, 1, SPRING.zoom); }
+    aim(sy, 0, SPRING.sheet);
     idle = MOCK ? 0 : 1;
-    wave(380);
-    hintOn(3400);
+    hintOn(3600);
   };
   const close = () => {
     clear(); hintOff();
     setState(profile.classList.contains('set') ? 'set' : 'closed');
-    idle = 0;
+    idle = 0; aim(run, 0, SPRING.idle);
     if (calm) { jump(sy, OFF); draw(); return; }
     aim(sy, OFF, SPRING.away);
   };
@@ -480,6 +633,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     art.classList.add('press');
     items.forEach((it) => { if (it.name !== 'flag') aim(it.s, 1.05, SPRING.touch); });
     aim(btn, 0.97, SPRING.touch);
+    pose({ lean: 4.5, bob: 3.5, arm: 16, front: -3, reach: -0.035, back: 3, head: -3 }, SPRING.pose);
     return true;
   };
   const release = () => {
@@ -487,6 +641,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     setState('open'); art.classList.remove('press');
     items.forEach((it) => aim(it.s, 1, SPRING.back));
     aim(btn, 1, SPRING.back);
+    pose({}, SPRING.back);
     hintOn(4000);
   };
 
@@ -504,9 +659,13 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     }
     art.classList.remove('press'); art.classList.add('lift');           // предметы становятся чёткими монетами, картинка за ними тает
     aim(btn, 1, SPRING.back);
+    aim(run, 0, SPRING.idle);
+    if (GL && !camRest()) camTo(REST, [0.18, 1]);                     // нажали посреди пролёта камеры — она быстро встаёт на место
+    pose({ lean: -2, bob: -1.5, arm: -9, front: 5, reach: 0.09, back: -4, head: 1.5, px: 9, py: -12 }, SPRING.push);   // толчок: бегун рвётся вперёд по дороге
     const order = ['meal', 'water', 'fire', 'walk', 'sleep', 'scales'];
     later(() => {
       // копии предметов — в слой над шторкой, ровно там, где предметы сейчас; оригиналы прячутся
+      camAt(REST); art.classList.remove('moving');
       order.forEach((g, i) => {
         const it = items.find((x) => x.goal === g), m = medals[g], r = pt(it.el), size = 2 * it.r;
         const el = document.createElement('div');
@@ -521,7 +680,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
       });
       aim(sy, OFF, SPRING.away);                                        // шторка уходит вниз, предметы летят над ней
       draw();
-    }, 60);
+    }, 200);                                                            // 200 мс — такт на толчок бегуна, потом всё уходит
   };
   // монета долетела: медаль принимает её — заливается и коротко вздрагивает
   const watch = () => {
@@ -531,7 +690,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
       f.m.el.classList.add('on'); kick(f.m.s, 2.4, SPRING.medal);
       f.el.classList.add('gone');
       setTimeout(() => { f.el.remove(); drop(f.x, f.y, f.s); flights = flights.filter((x) => x !== f); }, 160 * SLOW);
-      if (flights.every((x) => x.done)) later(() => { profile.classList.add('set'); setState('set'); }, 120);
+      if (flights.every((x) => x.done)) later(() => { profile.classList.add('set'); setState('set'); camAt(REST); Object.values(rig).forEach((r) => jump(r, 0)); }, 120);
     }
   };
 
@@ -557,10 +716,10 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const imgs = [...document.querySelectorAll('.intro img')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
   Promise.all(imgs).then(() => {
     if (params.get('screen') === 'stats') { reset(); profile.classList.add('set'); Object.values(medals).forEach((m) => m.el.classList.add('on')); setState('set'); draw(); view('stats'); }
-    else if (params.has('hold')) { reset(); setState('open'); jump(sy, 0); idle = MOCK ? 0 : 1; draw(); if (!MOCK) { wake(); hintOn(); } }
+    else if (params.has('hold')) { reset(); setState('open'); waved = true; jump(sy, 0); idle = MOCK ? 0 : 1; if (GL) jump(run, 1); draw(); if (!MOCK) { wake(); hintOn(); } }
     else enter();
   });
-  window.__motion = { sy, btn, items, medals, state: () => state, finish };
+  window.__motion = { sy, btn, items, medals, cam, rig, run, state: () => state, finish };
 })();
 </script>
 </body>
