@@ -78,7 +78,6 @@
     { id: 'sleep', kind: 'sleep', x: 270, y: 70, d: 86, title: 'Сон', sub: () => 'до 23:00' },
     { id: 'w1', kind: 'water', x: 150, y: 138, d: 46 }, { id: 'w2', kind: 'water', x: 204, y: 146, d: 46 }, { id: 'w3', kind: 'water', x: 258, y: 140, d: 46 },
   ];
-  const EYES = '<i class="eyes"><b><u></u></b><b><u></u></b></i>';
 
   const check = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5l3.6 3.5 7.4-8" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const R = 20, C = 2 * Math.PI * R;
@@ -96,7 +95,7 @@
       </div>
 
       <div class="card coach" data-mood="idle">
-        <div class="blob" aria-hidden="true">${EYES}</div>
+        <img class="coach-ico" src="${A}tab-chat.svg" alt="" width="52" height="52">
         <div class="swap" data-swap>
           <p class="hero-kicker" data-h="kicker">${h.kicker}</p>
           <h3 data-h="title">${h.title}</h3>
@@ -205,7 +204,7 @@
     } else Object.entries(h).forEach(([k, v]) => { box.querySelector(`[data-h="${k}"]`).textContent = v; });
   };
 
-  // коуч реагирует глазами: думает, пока пересчитывает, потом радуется
+  // значок коуча чуть пульсирует, пока план пересчитывается
   let moodTimers = [];
   const mood = (seq) => {
     moodTimers.forEach(clearTimeout); moodTimers = [];
@@ -244,7 +243,7 @@
       s.glasses += 1; s.water = +(s.water + 0.2).toFixed(1); if (s.glasses >= 3) done.water = true; pop(id);
     }
     if (key === 'sleep') { done.sleep = true; pop('sleep'); }
-    mood([['think', 420], ['happy', 900]]);
+    mood([['think', 420]]);
     sync();
   };
 
@@ -259,7 +258,7 @@
       const m = DINNERS[+opt.dataset.opt];
       s.kcal += m.add[0]; s.p += m.add[1]; s.f += m.add[2]; s.c += m.add[3];
       done.meal = `${m.add[0]} ккал, ${m.add[1]} г белка`;
-      sheet(false); setTimeout(() => { pop('meal'); mood([['think', 420], ['happy', 900]]); sync(); }, 260);
+      sheet(false); setTimeout(() => { pop('meal'); mood([['think', 420]]); sync(); }, 260);
       return;
     }
     if (e.target.closest('.st-dim')) sheet(false);

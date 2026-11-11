@@ -47,22 +47,11 @@ html.sb .num b { position: relative; top: -2px; }
 .day[aria-pressed="true"] i b { background: var(--blue); }
 .day:disabled i { visibility: hidden; }
 
-/* глаза: общие для коуча и для мяча на первом экране */
-.eyes { display: flex; gap: 5px; align-items: center; justify-content: center; font-style: normal; }
-.eyes b { position: relative; display: block; width: 11px; height: 13px; border-radius: 50%; background: #fff; transition: height 160ms var(--ease-out), border-radius 160ms var(--ease-out), transform 160ms var(--ease-out); }
-.eyes u { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: #0c1b4d; transform: translate(1px, 1.5px); transition: transform 240ms var(--ease-out), opacity 120ms ease; }
-@keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.12); } }
-@keyframes orbit { from { transform: rotate(0deg) translateX(2.6px); } to { transform: rotate(360deg) translateX(2.6px); } }
-
 /* коуч: одна фраза про день и одно дело, с которого начать */
 .coach { margin-top: 16px; padding: 16px 16px 16px 14px; display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, #f5f8ff 0%, #e8efff 100%); box-shadow: none; }
-.blob { flex: none; width: 60px; height: 60px; border-radius: 50%; background: var(--blue); display: grid; place-items: center; }
-@keyframes breathe-blob { from { transform: translateY(1px) scale(1, .98); } to { transform: translateY(-1px) scale(1, 1.02); } }
-.blob { animation: breathe-blob 2.8s ease-in-out infinite alternate; }
-.blob .eyes { animation: blink 4.6s ease-in-out infinite; }
-.coach[data-mood="think"] .eyes u { animation: orbit .5s linear infinite; }
-.coach[data-mood="happy"] .eyes b { height: 7px; border-radius: 9px 9px 1px 1px; transform: translateY(-2px); }
-.coach[data-mood="happy"] .eyes u { opacity: 0; }
+.coach-ico { flex: none; display: block; width: 52px; height: 52px; transition: transform 320ms var(--ease-out); }
+@keyframes ico-think { 50% { transform: scale(.9) rotate(-8deg); } }
+.coach[data-mood="think"] .coach-ico { animation: ico-think 420ms ease-in-out; }
 .hero-kicker { font-size: 13px; line-height: 18px; color: var(--grey); }
 .coach h3 { font-size: 20px; font-weight: 600; line-height: 24px; margin-top: 1px; }
 .hero-sub { font-size: 14px; line-height: 20px; margin-top: 3px; min-height: 40px; }   /* место под две строки, чтобы карточка не прыгала */
@@ -193,5 +182,5 @@ html:not(.sb) .num span { letter-spacing: .018em; }
 @media (prefers-reduced-motion: reduce) {
   .stats, .intro, .st-sheet { transition-duration: 1ms !important; }
   .swap { transform: none !important; }
-  .bub, .blob, .blob .eyes, .eyes u { animation: none !important; }
+  .bub, .coach-ico { animation: none !important; }
 }

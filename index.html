@@ -134,13 +134,13 @@ body.bare { background: #fff; }
 .hand { left: 46px; top: 11px; width: 229px; height: 175px; }
 /* мяч в руке: виден, только пока рука несёт его к кружку */
 .held { opacity: 0; transition: opacity 110ms ease; }
-.held .orb { display: grid; place-items: center; width: 55.6px; height: 55.6px; margin: 1.2px; border-radius: 50%; background: var(--blue); }
+.held .orb { display: block; width: 55.6px; height: 55.6px; margin: 1.2px; border-radius: 50%; background: var(--blue); }
 .art:is([data-state="carry"], [data-state="placing"]) .held { opacity: 1; transition: none; }
 
 /* мяч: тот же синий, что у кнопки, — потому что он и есть кнопка */
 .ball { position: absolute; z-index: 6; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; opacity: 0; pointer-events: none; }
 .ball div { width: 100%; height: 100%; }
-.ball div div { border-radius: 50%; background: var(--blue); display: grid; place-items: center; }   /* мяч — это коуч со второго экрана: те же глаза */
+.ball div div { border-radius: 50%; background: var(--blue); }
 .cf { position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; opacity: 0; pointer-events: none; }
 
 /* четвёртая галочка встаёт на место с лёгкой посадкой */
@@ -253,7 +253,7 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
           <div class="hand-float">
             <div class="l hand"><img src="assets/art/hand.webp" alt=""></div>
             <div class="l" style="left:222px;top:127px;width:46px;height:44px"><img src="assets/art/fingertip.webp" alt=""></div>
-            <div class="l held" style="left:211px;top:145px;width:58px;height:58px"><span class="orb"><i class="eyes"><b><u></u></b><b><u></u></b></i></span></div>
+            <div class="l held" style="left:211px;top:145px;width:58px;height:58px"><span class="orb"></span></div>
             <div class="l" style="left:208px;top:142px;width:63px;height:63px"><img src="assets/art/thumb.webp" alt=""></div>
           </div>
         </div>
@@ -288,7 +288,7 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
         </div>
       </section>
       <div class="home" aria-hidden="true"></div>
-      <div class="ball" aria-hidden="true"><div><div><i class="eyes"><b><u></u></b><b><u></u></b></i></div></div></div>
+      <div class="ball" aria-hidden="true"><div><div></div></div></div>
       </div>
       <section class="stats" id="stats" aria-label="Статистика"></section>
     </main>
