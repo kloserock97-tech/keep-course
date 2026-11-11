@@ -122,7 +122,7 @@ const groupOf = (id) => {
   return hand.slice(i, j);
 };
 const raster = async (markup) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" width="${W}" height="${W}">${defsHand}<style>*{fill:#fff!important;stroke:#fff!important;opacity:1!important}</style><rect width="1254" height="1254" style="fill:#000!important"/>${markup}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" width="${W}" height="${W}">${defsHand}<style>*{fill:#fff!important;stroke:#fff!important;opacity:1!important}</style><rect width="1254" height="1254" style="fill:#000!important;stroke:none!important"/>${markup}</svg>`;
   const { data } = await sharp(Buffer.from(svg)).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const m = new Float32Array(N); for (let i = 0; i < N; i++) m[i] = data[i * 3] > 127 ? 1 : 0; return m;
 };
@@ -160,6 +160,11 @@ const raster = async (markup) => {
   for (let r = 0; r <= 40 * R && owner.some((o, i) => o < 0 && runner[i]); r += 4 * R) RUN.forEach(([, p], b) => { const g = r ? dilate(p.core, r) : p.core; for (let i = 0; i < N; i++) if (runner[i] && owner[i] < 0 && g[i]) owner[i] = b; });
   RUN.forEach(([, p], b) => { const m = new Float32Array(N); for (let i = 0; i < N; i++) m[i] = owner[i] === b ? 1 : 0; p.fg = m; });
   for (const p of Object.values(PARTS)) for (let i = 0; i < N; i++) fgAll[i] = Math.max(fgAll[i], p.fg[i]);
+  if (process.env.DUMP) {                                                      // маски частей для нарезки слоёв: tools/layers.mjs
+    const dir = path.join(ROOT, 'src-assets', 'layers', 'masks'); fs.mkdirSync(dir, { recursive: true });
+    for (const [id, p] of Object.entries(PARTS)) { const b = Buffer.alloc(N); for (let i = 0; i < N; i++) b[i] = p.fg[i] ? 255 : 0; await sharp(b, { raw: { width: W, height: W, channels: 1 } }).png().toFile(path.join(dir, id + '.png')); }
+    console.log('маски', Object.keys(PARTS).join(' ')); return;
+  }
 
   // фон под подвижными частями: достраиваем заново по точной маске (с запасом в 3 px)
   const fill = inpaint(rgb, dilate(fgAll, 3 * R));
