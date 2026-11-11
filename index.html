@@ -173,13 +173,8 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
 .btn-primary { background: var(--blue); color: #fff; }
 .btn-primary:active { transform: none; }      /* главную кнопку сжимает та же пружина, что поднимает предметы */
 .btn-wrap { will-change: transform; }
-/* блик: в конце волны-подсказки по кнопке один раз проходит свет — подсказка «докатилась» до действия */
-.btn-primary { position: relative; overflow: hidden; }
-.btn-primary::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, .26) 50%, transparent 68%); transform: translateX(-110%); }
-.btn-primary.shine::after { animation: shine 900ms cubic-bezier(.45, 0, .25, 1) both; }
-@keyframes shine { to { transform: translateX(110%); } }
-.art .glows, .art .sparks { transition: opacity 200ms ease; }
-.art.lift .glows, .art.lift .sparks { opacity: 0; }
+.art .sparks { transition: opacity 200ms ease; }
+.art.lift .sparks { opacity: 0; }
 @media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: #2460e6; } }
 
 /* полёт: копии целей над всем, пока шторка уезжает */
@@ -385,20 +380,17 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const medals = Object.fromEntries([...document.querySelectorAll('.medal')].map((m) => [m.dataset.goal, { el: m, s: spring(1, 0.0003, SPRING.medal) }]));
   let flights = [];
 
-  // ---------- Искры и подсветка целей ----------
-  // Искра: как в приложениях привычек, где у полученной награды вспыхивает звёздочка. У цели, которая только что
+  // ---------- Искры целей ----------
+  // Как в приложениях привычек, где у полученной награды вспыхивает звёздочка: у цели, которая только что
   // появилась, загорается жёлтая четырёхлучевая искра — в манере штрихов-искр самой картинки у флажка и миски.
-  // Подсветка: пока палец держит «Продолжить», под целями тлеет тёплый ореол — «вот что вы сейчас получите».
   const NS = 'http://www.w3.org/2000/svg';
-  svg.querySelector('defs').insertAdjacentHTML('beforeend', '<radialGradient id="glow"><stop offset="0" stop-color="#fff7cf" stop-opacity=".95"/><stop offset=".45" stop-color="#ffeaa3" stop-opacity=".5"/><stop offset="1" stop-color="#ffeaa3" stop-opacity="0"/></radialGradient>');
-  const glows = document.createElementNS(NS, 'g'); glows.setAttribute('class', 'glows');
   const sparks = document.createElementNS(NS, 'g'); sparks.setAttribute('class', 'sparks');
-  svg.querySelector('#goals').before(glows); svg.querySelector('#goals').after(sparks);
+  svg.querySelector('#goals').after(sparks);
   const STAR = 'M0 -1C.1 -.28 .28 -.1 1 0C.28 .1 .1 .28 0 1C-.1 .28 -.28 .1 -1 0C-.28 -.1 -.1 -.28 0 -1Z';
   const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); e.style.display = 'none'; parent.appendChild(e); return e; };
   for (const g of goals) {
     Object.assign(g, {
-      glow: mk('circle', { fill: 'url(#glow)' }, glows), gl: spring(0, 0.004, SPRING.touch), geo: null, fl: null,
+      geo: null, fl: null,
       st: [mk('path', { d: STAR, fill: '#ffc83a' }, sparks), mk('path', { d: STAR, fill: '#fff2a8' }, sparks)],
     });
   }
@@ -406,8 +398,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const flash = (g, amp = 1) => { if (calm) return; g.fl = { t0: clock, amp }; wake(); };
   const geo = (g) => {                                        // где у цели «плечо» для искры; считается один раз
     if (!g.geo) { const b = g.el.getBBox(), r = Math.max(26, Math.min(40, Math.max(b.width, b.height) * 0.16));
-      g.geo = { cx: b.x + b.width / 2, cy: b.y + b.height / 2, gr: Math.max(b.width, b.height) * 0.6, s: [[b.x + b.width * 0.88, b.y + b.height * 0.1, r], [b.x + b.width * 0.1, b.y + b.height * 0.32, r * 0.55]] };
-      g.glow.setAttribute('cx', g.geo.cx.toFixed(1)); g.glow.setAttribute('cy', g.geo.cy.toFixed(1)); g.glow.setAttribute('r', g.geo.gr.toFixed(1)); }
+      g.geo = { s: [[b.x + b.width * 0.88, b.y + b.height * 0.1, r], [b.x + b.width * 0.1, b.y + b.height * 0.32, r * 0.55]] }; }
     return g.geo;
   };
 
@@ -424,8 +415,6 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
       const f = Math.sin(clock * 2 * Math.PI / 4.6 + g.ph) * idle * 4;                               // покой: ±1 pt
       SET(g.el, `translate(0 ${(g.y.x + f).toFixed(2)}) ` + about(g.ox, g.oy, g.w.x * g.s.x, g.h.x * g.s.x));
       const lift = `translate(0 ${(g.y.x + f).toFixed(2)}) `;
-      if (g.gl.x > 0.004) { geo(g); g.glow.style.display = ''; g.glow.style.opacity = g.gl.x.toFixed(3); SET(g.glow, lift); }
-      else g.glow.style.display = 'none';
       const ft = g.fl ? clock - g.fl.t0 : 9;
       if (ft > SPARK_T + 0.1) g.fl = null;
       g.st.forEach((el, i) => {                                 // вторая искра — меньше и на 0,1 с позже
@@ -486,7 +475,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
       if (n === 'flag') kick(g.k, 70, SPRING.flag); else kick(g.y, -26, SPRING.hop);
       flash(g, 0.7);
     }, start + i * 70));
-    later(() => { if (state === 'open') { kick(btn, 0.35, SPRING.btn); go.classList.remove('shine'); void go.offsetWidth; go.classList.add('shine'); } }, start + WAVE.length * 70 + 30);
+    later(() => { if (state === 'open') kick(btn, 0.35, SPRING.btn); }, start + WAVE.length * 70 + 30);
   };
   let hintTimer = 0;
   const hintOff = () => clearTimeout(hintTimer);
@@ -496,8 +485,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     clear(); hintOff();
     flights.forEach((f) => { f.el.remove(); drop(f.x, f.y, f.s); }); flights = [];
     jump(sy, OFF); jump(btn, 1); jump(zoom, 1); jump(road, 1); jump(stride, 0);
-    goals.forEach((g) => { g.shown = true; [g.w, g.h, g.o, g.s].forEach((s) => jump(s, 1)); jump(g.y, 0); jump(g.k, 0); jump(g.gl, 0); g.fl = null; g.el.style.visibility = ''; });
-    go.classList.remove('shine');
+    goals.forEach((g) => { g.shown = true; [g.w, g.h, g.o, g.s].forEach((s) => jump(s, 1)); jump(g.y, 0); jump(g.k, 0); g.fl = null; g.el.style.visibility = ''; });
     Object.values(rig).forEach((r) => jump(r, 0));
     Object.values(medals).forEach((m) => { jump(m.s, 1); m.el.classList.remove('on'); });
     art.classList.remove('press', 'lift');
@@ -555,7 +543,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     clear(); hintOff(); setState('down');
     if (calm) return true;
     art.classList.add('press');
-    goals.forEach((g) => { if (g.goal) { aim(g.s, 1.06, SPRING.touch); aim(g.gl, 0.45, SPRING.touch); } });
+    goals.forEach((g) => { if (g.goal) aim(g.s, 1.06, SPRING.touch); });
     aim(btn, 0.97, SPRING.touch);
     pose({ lean: 4, bob: 12, arm: 14, front: -2.5, back: 3, head: -3 }, SPRING.pose);
     return true;
@@ -563,7 +551,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const release = () => {
     if (state !== 'down') return;
     setState('open'); art.classList.remove('press');
-    goals.forEach((g) => { aim(g.s, 1, SPRING.back); aim(g.gl, 0, SPRING.back); });
+    goals.forEach((g) => aim(g.s, 1, SPRING.back));
     aim(btn, 1, SPRING.back); pose({}, SPRING.back);
     hintOn(4000);
   };
@@ -583,7 +571,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     }
     art.classList.remove('press');
     aim(btn, 1, SPRING.back);
-    goals.forEach((g) => { g.fl = null; aim(g.gl, 0, [0.2, 1]); });
+    goals.forEach((g) => { g.fl = null; });
     aim(road, 1, [0.2, 1]); goals.forEach(grow); aim(stride, 0, [0.2, 1]);   // нажали посреди появления — сцена быстро дособирается
     pose({ lean: -2, bob: -6, arm: -9, front: 5, back: -4, head: 1.5, px: 34, py: -44 }, SPRING.push);
     const order = ['meal', 'water', 'fire', 'walk', 'sleep', 'scales'];
