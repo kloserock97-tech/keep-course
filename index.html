@@ -378,6 +378,37 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const medals = Object.fromEntries([...document.querySelectorAll('.medal')].map((m) => [m.dataset.goal, { el: m, s: spring(1, 0.0003, SPRING.medal) }]));
   let flights = [];
 
+  // ---------- Вариант ?v=states: «включение света» ----------
+  // Сцена стартует в сумерках, свет разливается кадрами от флажка-цели, цели распускаются из бутонов покадрово,
+  // по ним пробегают искры. Кадры держатся по 1/12 с — «на двойках», как в рисованной анимации.
+  const STATES = params.get('v') === 'states' && !calm && !MOCK;
+  const ON_TWOS = 1 / 12, NS = 'http://www.w3.org/2000/svg';
+  const GRADE = ['brightness(.62) saturate(.3)', 'brightness(.7) saturate(.45)', 'brightness(.82) saturate(.65)', 'brightness(.93) saturate(.88)', ''];
+  let light = 4, flips = [], busyUntil = 0;
+  const lightFrames = [], sparks = {};
+  if (STATES) {
+    const bgSvg = art.querySelector('.vec-bg');
+    for (let k = 0; k < 4; k++) { const im = document.createElementNS(NS, 'image'); im.setAttribute('href', `assets/goals/plate-s${k}.webp`); im.setAttribute('width', 1254); im.setAttribute('height', 1254); im.style.visibility = 'hidden'; bgSvg.appendChild(im); lightFrames.push(im); }
+    const layer = document.createElementNS(NS, 'g'); svg.appendChild(layer);
+    for (const g of goals) {
+      const b = g.el.getBBox(), sp = document.createElementNS(NS, 'g');
+      sp.innerHTML = '<path d="M0 -46C4 -10 10 -4 46 0C10 4 4 10 0 46C-4 10 -10 4 -46 0C-10 -4 -4 -10 0 -46Z" fill="#fff"/><circle r="9" fill="#fff"/>';
+      sp.style.filter = 'drop-shadow(0 0 10px rgba(255,255,255,.95))'; sp.style.visibility = 'hidden';
+      layer.appendChild(sp); sparks[g.name] = { el: sp, x: b.x + b.width * 0.78, y: b.y + b.height * 0.2 };
+    }
+  }
+  // покадровая смена: последовательность значений, каждое держится 1/12 с
+  const flip = (key, seq, onEnd) => { flips = flips.filter((f) => f.key !== key); flips.push({ key, seq, t0: clock, onEnd }); busyUntil = Math.max(busyUntil, clock + seq.length * ON_TWOS + 0.1); wake(); };
+  const flipVal = (key) => {
+    const f = flips.find((x) => x.key === key); if (!f) return null;
+    const i = Math.floor((clock - f.t0) / ON_TWOS);
+    if (i >= f.seq.length) { flips = flips.filter((x) => x !== f); if (f.onEnd) f.onEnd(); return null; }
+    return f.seq[i];
+  };
+  const POP = [[0.3, 0.3], [0.62, 0.48], [1.2, 0.78], [0.9, 1.14], [1.05, 0.96], [1, 1]];   // бутон → присел → вытянулся → сел
+  const SPARK = [0.25, 0.75, 1.2, 0.9, 0.55, 0.25];                                            // искра вспыхнула и погасла
+  const sparkle = (name) => flip('spark-' + name, SPARK);
+
   // ---------- Кадр ----------
   let last = 0, running = false, clock = 0, idle = 0, runPh = 0;
   const draw = () => {
@@ -387,15 +418,27 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     stage.style.transform = zoom.x === 1 ? '' : `scale(${zoom.x.toFixed(4)})`;
     if (road.x < 0.999) { veil.style.display = ''; for (const h of holes) SET(h.el, about(h.cx, h.cy, ease((road.x - h.t + 0.1) / 0.18), ease((road.x - h.t + 0.1) / 0.18))); }
     else veil.style.display = 'none';
+    if (STATES) {
+      const lv = flipVal('light'); if (lv !== null) light = lv;
+      lightFrames.forEach((im, k) => { im.style.visibility = k === light ? 'visible' : 'hidden'; });
+      svg.style.filter = GRADE[light];
+      for (const [name, sp] of Object.entries(sparks)) {
+        const v = flipVal('spark-' + name);
+        sp.el.style.visibility = v === null ? 'hidden' : 'visible';
+        if (v !== null) SET(sp.el, `translate(${sp.x.toFixed(1)} ${sp.y.toFixed(1)}) rotate(${(v * 40).toFixed(1)}) scale(${(v * 0.8).toFixed(3)})`);
+      }
+    }
     for (const g of goals) {
       const f = Math.sin(clock * 2 * Math.PI / 4.6 + g.ph) * idle * 4;                               // покой: ±1 pt
-      SET(g.el, `translate(0 ${(g.y.x + f).toFixed(2)}) ` + about(g.ox, g.oy, g.w.x * g.s.x, g.h.x * g.s.x));
+      const pv = STATES ? flipVal('pop-' + g.name) : null;
+      const sx = pv ? pv[0] : g.bud ? 0.3 : g.w.x * g.s.x, sy2 = pv ? pv[1] : g.bud ? 0.3 : g.h.x * g.s.x;
+      SET(g.el, `translate(0 ${(g.y.x + f).toFixed(2)}) ` + about(g.ox, g.oy, sx, sy2));
       g.el.style.opacity = Math.max(0, Math.min(1, g.o.x)).toFixed(3);
     }
     const wv = Math.sin(clock * 2 * Math.PI / 2.2) * idle * 3 + byName.flag.k.x;                         // флажок полощется
     SET(cloth, `translate(955 140) skewY(${wv.toFixed(2)}) scale(${(1 - Math.abs(wv) * 0.006).toFixed(4)} 1) translate(-955 -140)`);
     // бегун: бег только на входе. Каденс 0,62 с: корпус дважды за шаг проседает, рука и ноги ходят навстречу.
-    const a = stride.x, ph = runPh, R = (k) => rig[k].x;
+    const a = stride.x, ph = STATES ? Math.floor(runPh / (Math.PI / 4)) * (Math.PI / 4) : runPh, R = (k) => rig[k].x;   // в варианте states — восемь поз на шаг, как на двойках
     const bob = R('bob') + 9 * Math.sin(2 * ph) * a, lean = R('lean') + 2 * Math.sin(ph) * a, px = R('px'), py = R('py');
     const body = `translate(${px.toFixed(2)} ${(bob + py).toFixed(2)}) rotate(${lean.toFixed(2)} ${parts.body.p[0]} ${parts.body.p[1]})`;
     SET(parts.body.el, body);
@@ -410,7 +453,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     const dt = Math.min(0.034, last ? (t - last) / 1000 : 1 / 60) / SLOW; last = t; clock += dt;
     runPh += dt * 2 * Math.PI / 0.62 * Math.min(1, stride.x * 1.5);          // замедляется вместе с амплитудой — бегун не «проматывает» шаги
     for (let n = Math.ceil(dt / 0.004), h = dt / (n || 1); n > 0; n--) for (const s of all) { s.v += (-s.k * (s.x - s.to) - s.c * s.v) * h; s.x += s.v * h; }
-    let moving = idle > 0 && (state === 'open' || state === 'down');
+    let moving = (idle > 0 && (state === 'open' || state === 'down')) || clock < busyUntil || flips.length > 0;
     for (const s of all) { if (Math.abs(s.x - s.to) > s.eps || Math.abs(s.v) > s.eps * 30) moving = true; else { s.x = s.to; s.v = 0; } }
     watch(); draw();
     if (moving || flights.length) requestAnimationFrame(frame); else { running = false; last = 0; }
@@ -438,7 +481,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     WAVE.forEach((n, i) => later(() => {
       if (state !== 'open') return;
       const g = byName[n]; if (!g) return;
-      if (n === 'flag') kick(g.k, 70, SPRING.flag); else kick(g.y, -26, SPRING.hop);
+      if (STATES) { sparkle(n); if (n === 'flag') kick(g.k, 50, SPRING.flag); }
+      else if (n === 'flag') kick(g.k, 70, SPRING.flag); else kick(g.y, -26, SPRING.hop);
     }, start + i * 70));
     later(() => { if (state === 'open') kick(btn, 0.35, SPRING.btn); }, start + WAVE.length * 70 + 30);
   };
@@ -450,7 +494,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     clear(); hintOff();
     flights.forEach((f) => { f.el.remove(); drop(f.x, f.y, f.s); }); flights = [];
     jump(sy, OFF); jump(btn, 1); jump(zoom, 1); jump(road, 1); jump(stride, 0);
-    goals.forEach((g) => { g.shown = true; [g.w, g.h, g.o, g.s].forEach((s) => jump(s, 1)); jump(g.y, 0); jump(g.k, 0); g.el.style.visibility = ''; });
+    goals.forEach((g) => { g.shown = true; g.bud = false; [g.w, g.h, g.o, g.s].forEach((s) => jump(s, 1)); jump(g.y, 0); jump(g.k, 0); g.el.style.visibility = ''; });
+    flips = []; light = 4; busyUntil = 0;
     Object.values(rig).forEach((r) => jump(r, 0));
     Object.values(medals).forEach((m) => { jump(m.s, 1); m.el.classList.remove('on'); });
     art.classList.remove('press', 'lift');
@@ -465,6 +510,22 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     clear(); hintOff();
     view('intro'); setState('open');
     if (calm || MOCK) { jump(sy, 0); idle = MOCK ? 0 : 0; draw(); return; }
+    if (STATES) {
+      // сумерки → свет включается кадрами от флажка → цели распускаются по очереди от флажка к бегуну, с искрой → бегун встаёт
+      jump(zoom, 1); jump(road, 1); light = 0; flips = []; idle = 0;
+      goals.forEach((g) => { g.shown = true; g.bud = true; [g.w, g.h, g.s].forEach((x) => jump(x, 1)); jump(g.o, 1); });
+      jump(stride, 0); runPh = 0;
+      aim(sy, 0, SPRING.sheet);
+      later(() => { flip('light', [0, 1, 1, 2, 3, 4]); jump(stride, 1); }, 480);
+      ['flag', 'moon', 'bowl', 'bottle', 'bars', 'shoe', 'scale'].forEach((n, i) => later(() => {
+        const g = byName[n]; if (!g || !g.bud) return;
+        flip('pop-' + n, POP, () => { g.bud = false; }); sparkle(n);
+        if (n === 'flag') kick(g.k, 90, SPRING.flag);
+      }, 920 + i * 110));
+      later(() => aim(stride, 0, SPRING.stride), 1450);
+      later(() => { idle = 1; hintOn(2400); }, 2100);
+      return;
+    }
     jump(zoom, 1.12); aim(zoom, 1, SPRING.world);
     jump(road, 0); later(() => aim(road, 1, SPRING.road), 120);
     goals.forEach(hide);
@@ -476,8 +537,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const watch = () => {
     if (state === 'open' || state === 'down') {
       for (const g of goals) if (!g.shown && road.x >= g.t - 0.02) grow(g);
-      if (stride.to === 1 && road.x > 0.86) { aim(stride, 0, SPRING.stride); }
-      if (!idle && road.x > 0.995 && stride.x < 0.02 && !MOCK) { idle = 1; hintOn(2400); }
+      if (!STATES && stride.to === 1 && road.x > 0.86) { aim(stride, 0, SPRING.stride); }
+      if (!STATES && !idle && road.x > 0.995 && stride.x < 0.02 && !MOCK) { idle = 1; hintOn(2400); }
     }
     for (const f of flights) {
       if (f.done || Math.hypot(f.x.x - f.dx, f.y.x - f.dy) > 1.5) continue;
@@ -536,7 +597,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     }
     art.classList.remove('press');
     aim(btn, 1, SPRING.back);
-    aim(road, 1, [0.2, 1]); goals.forEach(grow); aim(stride, 0, [0.2, 1]);   // нажали посреди появления — сцена быстро дособирается
+    aim(road, 1, [0.2, 1]); goals.forEach(grow);
+    if (STATES) { flips = flips.filter((f) => f.key === 'light' ? (light = 4, false) : !f.key.startsWith('pop-')); goals.forEach((g) => { g.bud = false; }); } aim(stride, 0, [0.2, 1]);   // нажали посреди появления — сцена быстро дособирается
     pose({ lean: -2, bob: -6, arm: -9, front: 5, back: -4, head: 1.5, px: 34, py: -44 }, SPRING.push);
     const order = ['meal', 'water', 'fire', 'walk', 'sleep', 'scales'];
     later(() => {

@@ -40,7 +40,7 @@ const DOWN_AT = 5.3, UP_AT = 5.8;
       }
     };
   });
-  await page.goto(URL, { waitUntil: 'networkidle0' });
+  await page.goto(URL + (process.env.Q || ''), { waitUntil: 'networkidle0' });
   await page.evaluate(() => document.fonts.ready);
   await page.addStyleTag({ content: '.replay{display:none}' });
   await new Promise((r) => setTimeout(r, 500));
@@ -63,6 +63,6 @@ const DOWN_AT = 5.3, UP_AT = 5.8;
   fs.mkdirSync(path.join(ROOT, 'media'), { recursive: true });
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-framerate', String(FPS), '-i', path.join(FRAMES, 'f%04d.jpg'),
     '-vf', 'scale=1080:1920:flags=lanczos', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '17',
-    '-movflags', '+faststart', path.join(ROOT, 'media', 'motion.mp4')]);
+    '-movflags', '+faststart', path.join(ROOT, 'media', process.env.OUT || 'motion.mp4')]);
   console.log('\nmedia/motion.mp4');
 })();
