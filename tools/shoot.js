@@ -9,8 +9,8 @@ const ROOT = path.join(__dirname, '..');
 const FRAMES = path.join(ROOT, '.shots', 'frames');
 const URL = require('url').pathToFileURL(path.join(ROOT, 'index.html')).href;
 const FPS = 30;
-const SECONDS = 8.2;      // вход → покой с намёком → палец на кнопке → отпустили → галочка на месте
-const DOWN_AT = 5.4, UP_AT = 6.0;
+const SECONDS = 8.0;      // профиль → шторка → покой с намёком → палец на «Продолжить» → отпустили → предметы в медалях
+const DOWN_AT = 5.3, UP_AT = 5.8;
 
 (async () => {
   fs.rmSync(FRAMES, { recursive: true, force: true });
@@ -40,7 +40,7 @@ const DOWN_AT = 5.4, UP_AT = 6.0;
       }
     };
   });
-  await page.goto(URL + '?hold&stay', { waitUntil: 'networkidle0' });
+  await page.goto(URL, { waitUntil: 'networkidle0' });
   await page.evaluate(() => document.fonts.ready);
   await page.addStyleTag({ content: '.replay{display:none}' });
   await new Promise((r) => setTimeout(r, 500));
@@ -49,7 +49,7 @@ const DOWN_AT = 5.4, UP_AT = 6.0;
   for (let f = 0; f < total; f++) {
     if (f === Math.round(0.2 * FPS)) await page.evaluate(() => document.getElementById('replay').click());
     const finger = (type) => page.evaluate((ty) => {
-      const el = document.getElementById('connect'), r = el.getBoundingClientRect();
+      const el = document.getElementById('go'), r = el.getBoundingClientRect();
       el.dispatchEvent(new PointerEvent(ty, { bubbles: true, pointerId: 7, pointerType: 'touch', button: 0, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
     }, type);
     if (f === Math.round(DOWN_AT * FPS)) await finger('pointerdown');

@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Поможем сохранить курс</title>
-<meta name="description" content="Два экрана: запрос уведомлений с живой иллюстрацией и статистика дня с планом на вечер.">
+<title>Ориентиры на каждый день</title>
+<meta name="description" content="Два экрана: настройка ориентиров на день с живой иллюстрацией и статистика дня с планом на вечер.">
 <link rel="preconnect" href="https://cdn-app.sberdevices.ru" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&text=0123456789:&display=swap" rel="stylesheet">
-<link rel="preload" as="image" href="assets/art/hand.webp">
+<link rel="preload" as="image" href="assets/goals/scene.webp">
 <style>
 /* Шрифт макета подключён по ссылке владельца, файлов в проекте нет. Если не загрузился — Manrope. */
 @font-face { font-family: "SB Sans Display"; font-weight: 400; font-display: swap; src: url(https://cdn-app.sberdevices.ru/shared-static/0.0.0/fonts/SBSansDisplay.0.2.0/SBSansDisplay-Regular.woff2) format("woff2"); }
@@ -17,13 +17,16 @@
 /* Manrope лежит рядом. Глифы приподняты на 0,06 em: так строки встают на те же места, что в макете */
 @font-face { font-family: Manrope; font-weight: 400 700; font-display: swap; src: url(assets/fonts/manrope-cyrillic.woff2) format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; ascent-override: 100.6%; descent-override: 36%; line-gap-override: 0%; }
 @font-face { font-family: Manrope; font-weight: 400 700; font-display: swap; src: url(assets/fonts/manrope-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+2212; ascent-override: 100.6%; descent-override: 36%; line-gap-override: 0%; }
+/* резкость края у «окон» в картинку: переход по этой переменной превращает размытое пятно в чёткую монету */
+@property --f { syntax: "<percentage>"; inherits: false; initial-value: 70%; }
 :root {
   --blue: #2b6cfc;
   --ink: #020202;
+  --grey: #909090;
+  --line: #dee8ff;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --ease-sine: cubic-bezier(0.37, 0, 0.63, 1);           /* бесконечные циклы туда-обратно: скорость меняется как у маятника */
   --page: #e9edf3;
   --font: "SB Sans Display", Manrope, -apple-system, "Segoe UI", sans-serif;
 }
@@ -38,6 +41,7 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
+button { font: inherit; color: inherit; }
 
 /* ---------- iPhone 15 ---------- */
 .fit { width: calc(417px * var(--s, 1)); height: calc((var(--sh, 852px) + 24px) * var(--s, 1)); }
@@ -64,11 +68,15 @@ body.bare .island, body.bare:not(.bare-auto) .replay { display: none; }
 body.bare-auto .replay { top: 12px; right: auto; bottom: auto; left: 50%; transform: translateX(-50%); z-index: 50; padding: 6px 12px; font-size: 12px; opacity: .7; }
 body.bare { background: #fff; }
 
-/* ---------- Статус-бар и шапка ---------- */
+/* ---------- Профиль: под шторкой ---------- */
+.profile { position: absolute; inset: 0; overflow: hidden; background: #fff; }
+.p-bg { position: absolute; left: 0; top: 0; width: 393px; height: 844px; pointer-events: none; }
 .header {
-  position: absolute; z-index: 4; inset: 0 0 auto 0; height: 104px;
+  position: absolute; z-index: 3; inset: 0 0 auto 0; height: 104px; padding: 64px 24px 0;
+  display: flex; justify-content: flex-end;
   background: linear-gradient(#fff 80%, rgba(255, 255, 255, 0));
 }
+.edit { border: 0; background: none; padding: 0; font: 600 16px/22.4px var(--font); color: var(--blue); cursor: pointer; }
 .time {
   position: absolute; left: 0; top: 18.34px; width: 140.5px; text-align: center;
   font: 590 17px/22px -apple-system, "SF Pro Text", "SF Pro", Inter, "Segoe UI", sans-serif;
@@ -82,113 +90,106 @@ body.bare { background: #fff; }
 .batt::after { content: ""; position: absolute; inset: 2px; border-radius: 2.5px; background: #222; }
 .cap { left: 107px; top: 27.78px; }
 
-/* ---------- Иллюстрация ---------- */
-.art { position: absolute; z-index: 1; left: 2px; top: 111.4px; width: 390px; height: 380.75px; }
-.l { position: absolute; }
-.l img { display: block; width: 100%; height: 100%; }
+.p-body { position: absolute; left: 16px; top: 116px; width: 361px; }
+.who { padding: 0 16px; text-align: center; }
+.who h2 { height: 26px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 24px; font-weight: 600; line-height: 28.8px; }
+.who p { margin-top: 4px; font-size: 14px; line-height: 19.6px; color: var(--grey); }
+.group { margin-top: 32px; display: flex; flex-direction: column; gap: 8px; }
+.group:first-of-type { margin-top: 16px; }
+.group h3 { margin-bottom: 4px; font-size: 18px; font-weight: 600; line-height: 23.4px; font-feature-settings: "lnum" 1, "tnum" 1; }
+/* обводка карточек внутри, как в макете: в раскладку не входит */
+.card { background: #fff; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.field { height: 68px; padding: 10px 16px; display: flex; flex-direction: column; gap: 4px; }
+.field span { font-size: 16px; line-height: 22.4px; color: var(--grey); }
+.field b, .row b { font-size: 16px; line-height: 22.4px; font-weight: 600; }
+.row { display: flex; align-items: center; justify-content: space-between; padding: 20px 16px; }
+.row + .row { box-shadow: inset 0 1px 0 var(--line); }
+.row img, .goals-top img { display: block; }
 
-/* фон иллюстрации только проявляется: это декорация, двигаться ей незачем */
-.in { opacity: 0; transition: opacity 360ms ease var(--d, 0ms); }
-.art:not([data-state="pre"]) .in { opacity: 1; }
+/* «Мои цели»: шесть значков-медалей — сюда и прилетают предметы с картинки */
+.goals { display: block; width: 100%; padding: 16px; border: 0; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.goals-top { display: flex; align-items: center; justify-content: space-between; }
+.goals-top b { font-size: 16px; line-height: 22.4px; font-weight: 600; }
+.goals-row { margin-top: 12px; display: flex; align-items: center; }
+.medals { display: flex; }
+.medal { position: relative; width: 36px; height: 44px; margin-right: -6px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px #afc4ff; transition: background-color 180ms ease, box-shadow 180ms ease; will-change: transform; }
+.medal:last-child { margin-right: 0; }
+.medal img { position: absolute; left: 7px; top: 12px; width: 20px; height: 20px; transition: filter 180ms ease; }
+.medal:last-child img { left: 8px; }
+.medal.on { background: var(--blue); box-shadow: inset 0 0 0 1px var(--blue), 0 0 0 1.5px #fff; }   /* белая кромка: медали в стопке читаются по отдельности */
+.medal.on img { filter: brightness(0) invert(1); }
+.goals-sub { margin-left: 14px; font-size: 14px; line-height: 19.6px; color: var(--grey); opacity: 0; transform: translateY(4px); transition: opacity 240ms ease, transform 320ms var(--ease-out); }
+.profile.set .goals-sub { opacity: 1; transform: none; }
 
-/* фоновый цикл: облака плывут, точки покачиваются */
-@keyframes drift { from { transform: translateX(calc(var(--a, 6px) * -1)); } to { transform: translateX(var(--a, 6px)); } }
-@keyframes bob { from { transform: translateY(-2.5px); } to { transform: translateY(2.5px); } }
-.cloud img { animation: drift var(--t, 11s) var(--ease-sine) var(--o, 0s) infinite alternate; }
-.dot img { animation: bob var(--t, 4.6s) var(--ease-sine) var(--o, 0s) infinite alternate; }
-
-.token::before { /* белая подложка: галочка в картинке прозрачная */
-  content: ""; position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: #fff;
+.p-tabbar {
+  position: absolute; z-index: 3; inset: auto 0 0 0; height: 84px; padding: 12px 64px 0;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  background: rgba(255, 255, 255, .95); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
 }
-.token img { position: relative; }
-/* на входе первые три дня ещё пустые: галочка встаёт, когда над днём проходит рука */
-.token.wait { opacity: 0; }
-.ghost { opacity: 0; transition: opacity 140ms ease; }
-.ghost.on { opacity: 1; transition: none; }
+.p-tabbar button { border: 0; background: none; padding: 0; cursor: pointer; }
+.p-tabbar img { display: block; }
+.p-tabbar .side { margin-top: 6px; }
+.home { position: absolute; z-index: 30; left: 126.5px; right: 126.5px; bottom: 8px; height: 5px; border-radius: 43px; background: #000; pointer-events: none; }
 
-/* Рука с колокольчиком. Её положение, размер кружка и кнопки считают пружины (см. сценарий):
-   у пружины при смене цели сохраняется скорость, поэтому между состояниями нет остановок.
-   Здесь остаётся только то, что меняется наплывом. */
-.hand-move { position: absolute; inset: 0; opacity: 0; transform: translate(-230px, 44px); transition: opacity 160ms ease; will-change: transform; }
-.art:is([data-state="enter"], [data-state="idle"], [data-state="lean"], [data-state="down"], [data-state="placing"], [data-state="placed"]) .hand-move { opacity: 1; }
-.art.clear .hand-move { opacity: 0; transition: opacity 220ms ease; }       /* рука гаснет, только когда сошла с шара */
-.art[data-state="rearm"] .hand-move { transition: opacity 220ms ease 100ms; }
-.hand-float { position: absolute; inset: 0; transform-origin: 80px 40px; }
-.hand { left: 46px; top: 11px; width: 229px; height: 175px; }
+/* ---------- Шторка ---------- */
+.dim { position: absolute; z-index: 8; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.intro.open .dim { pointer-events: auto; }
+.sheet-wrap { position: absolute; z-index: 10; left: 0; right: 0; top: 50px; bottom: 0; transform: translateY(110%); will-change: transform; }
+.grabber { width: 43px; height: 5px; margin: 0 auto; border-radius: 2.5px; background: rgba(255, 255, 255, .45); }
+.modal { position: absolute; inset: 14px 0 0; padding: 32px 20px 0; border-radius: 24px 24px 0 0; background: #fff; display: flex; flex-direction: column; align-items: center; }
+.close { align-self: flex-start; width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.close img { display: block; }
 
-.ring-4 { left: 229px; top: 197px; width: 78px; height: 78px; }
-.ring-4 img { position: absolute; left: 0; top: 0; transition: opacity 300ms ease; }
-.ring-4 .clean { left: 5px; top: 5px; width: 68px; height: 68px; opacity: 0; }
-.art:is([data-state="pre"], [data-state="enter"], [data-state="placed"], [data-state="rearm"]) .ring-4 .clean { opacity: 1; }
-.art:is([data-state="pre"], [data-state="enter"], [data-state="placed"], [data-state="rearm"]) .ring-4 .lit { opacity: 0; }
+.art { position: relative; width: 338px; height: 338px; flex: none; overflow: hidden; }
+.stage { position: absolute; inset: 0; will-change: transform; }
+.scene { position: absolute; inset: 0; transition: opacity 200ms ease; }
+.scene img { position: absolute; display: block; }
+.scene .full { left: 0; top: 0; width: 338px; height: 338px; }
+.moon { position: absolute; left: 296px; top: 27px; width: 34px; height: 34px; will-change: transform; }
+.moon img { display: block; width: 100%; height: 100%; }
 
-/* шар с колокольчиком: в руке и — тот же самый — в кружке после посадки */
-.orb { position: absolute; left: 0; top: 0; width: 58px; height: 58px; }
-.bell { position: absolute; left: 12px; top: 11px; width: 34px; height: 34px; transform-origin: 50% 14%; }
-.bell img { position: absolute; inset: 0; transform-origin: 50% 14%; }
-.held .orig { display: none; }
-.art.clear .held { visibility: hidden; }                        /* без наплыва: в кружке в этот миг уже стоит такой же шар */
-.glow-wrap { transition: opacity 220ms ease; }
-@keyframes breathe { from { opacity: .88; transform: scale(.99); } to { opacity: 1; transform: scale(1.02); } }
-.glow { animation: breathe 2.4s var(--ease-sine) infinite alternate; }
-.art[data-state="placed"] .glow-wrap { opacity: 0; }
-
-/* Посадка. Шар встал в кружок и остаётся под пальцами, пока рука с него не сойдёт (его держит на месте сценарий).
-   Колокольчик прозвенел — и шар переворачивается галочкой: напоминание стало отмеченным днём. */
-.seat { left: 231.69px; top: 199.2px; width: 73px; height: 74px; visibility: hidden; }
-.art.clear .seat { visibility: visible; }
-.art.clear .ring-4.in { opacity: 0; transition: opacity 180ms ease 360ms; }      /* кружок прячется за шаром, пока тот стоит ребром */
-.coin { position: absolute; inset: 0; transform-style: preserve-3d; }
-.art.clear .coin { transform: rotateY(180deg); transition: transform 440ms var(--ease-in-out) 140ms; }
-.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-.face.back { transform: rotateY(180deg); }
-.face.front .orb { left: 7.5px; top: 8px; }
-.face.front .bell { left: 19.5px; top: 19px; }
-
-/* завтрашний день получает свой колокольчик: напоминания теперь стоят и дальше */
-.badge { left: 320px; top: 210px; width: 34px; height: 34px; opacity: 0; transform: scale(.88); transition: opacity 200ms ease, transform 260ms var(--ease-out); }
-.badge .bell { left: 0; top: 0; }
-.art.clear .badge { opacity: .55; transform: scale(.94); transition-delay: 420ms; }
-
-.day-label { width: 78px; text-align: center; font: 600 12px/16px var(--font); color: #8a9abb; }
-.day-label.next { opacity: 0; transition: opacity 200ms ease; }
-.art.clear .day-label.next { opacity: 1; transition-delay: 420ms; }
-
-/* режим сверки с макетом: шар как в исходной картинке, без подписей */
-.art.mock .held .orig { display: block; }
-.art.mock .held .orb, .art.mock .held .bell, .art.mock .day-label { display: none; }
-
-/* ---------- Свечение под текстом, текст, кнопки ---------- */
-.aura { position: absolute; z-index: 2; left: 17px; bottom: -128px; width: 615px; height: 600px; pointer-events: none; }
-.sheet {
-  position: absolute; z-index: 5; inset: auto 0 0 0;
-  padding: 24px 24px 48px; display: flex; flex-direction: column; gap: 16px;
+/* «Окно» в картинку: круг той же картинки поверх самой себя. В покое его не видно —
+   пиксели совпадают, а край растушёван. Двигается окно — двигается предмет. */
+.win {
+  position: absolute; border-radius: 50%;
+  background: url(assets/goals/scene.webp) no-repeat; background-size: 338px 338px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 var(--f), transparent 100%);
+          mask-image: radial-gradient(closest-side, #000 var(--f), transparent 100%);
+  transition: --f 200ms ease;
+  will-change: transform;
 }
-.copy { display: flex; flex-direction: column; gap: 8px; }
-h1 { font-size: 24px; font-weight: 600; line-height: 29px; white-space: nowrap; }
-html:not(.sb) h1 { letter-spacing: -.003em; }
-html.sb h1 { position: relative; top: -1px; }   /* то же округление метрик, что в статистике */
-.copy p { font-size: 16px; line-height: 22px; }
-html:not(.sb) .copy p { letter-spacing: .006em; }
-.actions { display: flex; flex-direction: column; gap: 8px; }
+.art.press .win { --f: 80%; transition-duration: 130ms; }
+.art.press .scene { opacity: .82; transition-duration: 130ms; }
+.art.lift .win { --f: 97%; }
+.art.lift .scene, .art.lift .win[data-name="flag"] { opacity: 0; transition: opacity 240ms ease; }   /* флажок — цель, он остаётся на картинке и тает вместе с ней */
+
+.copy { width: 390px; flex: none; padding: 24px 24px 0; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 24px; font-weight: 600; line-height: 29px; }
+.copy p { font-size: 16px; line-height: 22px; }      /* Figma округляет высоту строки до целых: 28,8 → 29, 22,4 → 22 */
+html.sb h1 { position: relative; top: -1px; }                         /* браузер округляет метрики шрифта: строка садится на 1 pt ниже */
+/* Figma рисует картинку и кнопки на треть пункта левее, чем выходит по раскладке (27,5 и 1,5 округляются) */
+.art, .actions { position: relative; left: -0.33px; }
+.actions { width: 390px; flex: none; padding: 32px 24px 0; display: flex; flex-direction: column; gap: 8px; }
 .btn {
-  appearance: none; border: 0; width: 100%; padding: 12px 24px; border-radius: 16px;
+  appearance: none; border: 0; width: 100%; padding: 16px; border-radius: 20px;
   font: 600 16px/24px var(--font); cursor: pointer;
   background: none; color: var(--blue);
   transition: transform 140ms var(--ease-out), background-color 200ms ease;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
 .btn:active { transform: scale(.97); }
-.btn-primary:active { transform: none; }          /* главную кнопку сжимает та же пружина, что ведёт руку */
+.btn:focus-visible, .goals:focus-visible, .close:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:active { transform: none; }      /* главную кнопку сжимает та же пружина, что поднимает предметы */
 .btn-wrap { will-change: transform; }
-.btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-.btn-primary { background: var(--blue); color: #fff; display: grid; }
-.btn-primary > span { grid-area: 1 / 1; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 180ms ease, transform 220ms var(--ease-out); }
-.btn-primary .done { opacity: 0; transform: translateY(6px); }
-.btn-primary.is-done .ask { opacity: 0; transform: translateY(-6px); }
-.btn-primary.is-done .done { opacity: 1; transform: none; }
 @media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: #2460e6; } }
-.home { position: absolute; z-index: 1; left: 50%; bottom: 8px; margin-left: -72px; width: 144px; height: 5px; border-radius: 3px; background: #000; }
+
+/* полёт: копии окон над всем, пока шторка уезжает */
+.fly { position: absolute; z-index: 20; inset: 0; pointer-events: none; }
+.fly > * { position: absolute; transition: opacity 140ms ease; will-change: transform; }
+.fly .gone { opacity: 0; }
+.fly .moon-coin { border-radius: 50%; background: radial-gradient(circle at 40% 35%, #f3f8ff, #d6e6fb); display: grid; place-items: center; }
+.fly .moon-coin img { width: 74%; height: 74%; }
 
 .replay {
   position: fixed; right: 20px; bottom: 20px; padding: 10px 16px; border-radius: 999px; border: 0;
@@ -196,11 +197,11 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
   box-shadow: 0 1px 2px rgba(20, 30, 60, .12);
 }
 
-.no-anim, .no-anim * { transition: none !important; }
+/* режим сверки с макетом: без луны */
+.mock .moon { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cloud img, .dot img, .glow { animation: none !important; }
-  .coin, .badge { transition: none !important; }
+  .win, .scene, .goals-sub, .medal, .medal img { transition-duration: 1ms !important; }
 }
 </style>
 <link rel="stylesheet" href="stats.css">
@@ -212,82 +213,90 @@ html:not(.sb) .copy p { letter-spacing: .006em; }
       <div class="island" aria-hidden="true"></div>
 
       <div class="intro">
-      <div class="art" data-state="pre" aria-hidden="true">
-        <div class="l cloud in" style="left:15px;top:117px;width:134px;height:75px;--d:0ms;--t:14s;--a:7px"><img src="assets/art/cloud-a.webp" alt=""></div>
-        <div class="l cloud in" style="left:234px;top:31px;width:125px;height:75px;--d:0ms;--t:14s;--a:-6px;--o:-4s"><img src="assets/art/cloud-b.webp" alt=""></div>
-        <div class="l cloud in" style="left:97px;top:300px;width:106px;height:55px;--d:0ms;--t:10s;--a:-5px;--o:-2s"><img src="assets/art/cloud-c.webp" alt=""></div>
-        <div class="l cloud in" style="left:234px;top:288px;width:110px;height:63px;--d:0ms;--t:13s;--a:6px;--o:-7s"><img src="assets/art/cloud-d.webp" alt=""></div>
-
-        <div class="l dot in" style="left:41px;top:86px;width:20px;height:19px;--d:0ms;--i:3;--t:4.4s"><img src="assets/art/dot-1.webp" alt=""></div>
-        <div class="l dot in" style="left:272px;top:88px;width:19px;height:19px;--d:0ms;--i:1;--t:5.2s;--o:-2s"><img src="assets/art/dot-2.webp" alt=""></div>
-        <div class="l dot in" style="left:343px;top:146px;width:20px;height:19px;--d:0ms;--i:0;--t:4.8s;--o:-1s"><img src="assets/art/dot-3.webp" alt=""></div>
-        <div class="l dot in" style="left:334px;top:301px;width:19px;height:20px;--d:0ms;--i:2;--t:5.6s;--o:-3s"><img src="assets/art/dot-4.webp" alt=""></div>
-        <div class="l dot in" style="left:48px;top:326px;width:20px;height:19px;--d:0ms;--i:4;--t:4.2s;--o:-2.5s"><img src="assets/art/dot-5.webp" alt=""></div>
-
-        <div class="l in ring-4" style="--d:0ms"><img class="clean" src="assets/art/ring-4.webp" alt=""><img class="lit" src="assets/art/ring-4-lit.webp" alt=""></div>
-        <div class="l in ring-5" style="left:303px;top:193px;width:68px;height:68px;--d:40ms"><img src="assets/art/ring-5.webp" alt=""></div>
-
-        <div class="l ghost" style="left:31.5px;top:231.2px;width:68px;height:68px"><img src="assets/art/ring-5.webp" alt=""></div>
-        <div class="l ghost" style="left:99.8px;top:220.3px;width:68px;height:68px"><img src="assets/art/ring-5.webp" alt=""></div>
-        <div class="l ghost" style="left:167.6px;top:209.75px;width:68px;height:68px"><img src="assets/art/ring-5.webp" alt=""></div>
-
-        <div class="l token" data-day style="left:28px;top:227px;width:75px;height:76px"><img src="assets/art/token-1.webp" alt=""></div>
-        <div class="l token" data-day style="left:96px;top:216px;width:76px;height:76px"><img src="assets/art/token-2.webp" alt=""></div>
-        <div class="l token" data-day style="left:165px;top:207px;width:73px;height:74px"><img src="assets/art/token-3.webp" alt=""></div>
-
-        <div class="l day-label in" style="left:229px;top:276px;--d:60ms">сегодня</div>
-        <div class="l day-label next" style="left:298px;top:267px">завтра</div>
-        <div class="l badge"><div class="bell"><img class="clap" src="assets/art/clapper.webp" alt=""><img src="assets/art/bell.webp" alt=""></div></div>
-
-        <div class="l seat"><div class="coin">
-          <div class="face front"><img class="orb" src="assets/art/ball.webp" alt=""><div class="bell"><img class="clap" src="assets/art/clapper.webp" alt=""><img src="assets/art/bell.webp" alt=""></div></div>
-          <div class="face back"><img src="assets/art/token-3.webp" alt="" style="display:block;width:100%;height:100%"></div>
-        </div></div>
-
-        <div class="hand-move">
-          <div class="hand-float">
-            <div class="l glow-wrap" style="left:189px;top:123px;width:102px;height:102px"><img class="glow" src="assets/art/glow.webp" alt=""></div>
-            <div class="l hand"><img src="assets/art/hand.webp" alt=""></div>
-            <div class="l" style="left:222px;top:127px;width:46px;height:44px"><img src="assets/art/fingertip.webp" alt=""></div>
-            <div class="l held" style="left:211px;top:145px;width:58px;height:58px">
-              <img class="orig" src="assets/art/token-held.webp" alt="">
-              <img class="orb" src="assets/art/ball.webp" alt="">
-              <div class="bell"><img class="clap" src="assets/art/clapper.webp" alt=""><img src="assets/art/bell.webp" alt=""></div>
+        <section class="profile" aria-label="Профиль">
+          <img class="p-bg" src="assets/goals/bg.webp" alt="">
+          <header class="header">
+            <div class="time" aria-hidden="true">20:01</div>
+            <div class="levels" aria-hidden="true">
+              <img class="cellular" src="assets/ui/cellular.svg" alt="">
+              <img class="wifi" src="assets/ui/wifi.svg" alt="">
+              <span class="batt"></span>
+              <img class="cap" src="assets/ui/cap.svg" alt="">
             </div>
-            <div class="l" style="left:208px;top:142px;width:63px;height:63px"><img src="assets/art/thumb.webp" alt=""></div>
+            <button class="edit" type="button">Изменить</button>
+          </header>
+          <div class="p-body">
+            <div class="who"><h2>Konstantin Konstantinopolskiy Ahmed Ali</h2><p>konstantin@mail.ru</p></div>
+            <div class="group">
+              <div class="card field"><span>Пол</span><b>Мужской</b></div>
+              <div class="card field"><span>Дата рождения и возраст</span><b>26 марта 1991 · 35 лет</b></div>
+            </div>
+            <div class="group">
+              <h3>Здоровье и питание</h3>
+              <button class="card goals" id="goals" type="button">
+                <span class="goals-top"><b>Мои цели</b><img src="assets/goals/chevron.svg" alt="" width="20" height="20"></span>
+                <span class="goals-row">
+                  <span class="medals">
+                    <span class="medal" data-goal="meal"><img src="assets/goals/g-meal.svg" alt="Питание"></span>
+                    <span class="medal" data-goal="water"><img src="assets/goals/g-water.svg" alt="Вода"></span>
+                    <span class="medal" data-goal="fire"><img src="assets/goals/g-fire.svg" alt="Активность"></span>
+                    <span class="medal" data-goal="walk"><img src="assets/goals/g-walk.svg" alt="Шаги"></span>
+                    <span class="medal" data-goal="sleep"><img src="assets/goals/g-sleep.svg" alt="Сон"></span>
+                    <span class="medal" data-goal="scales"><img src="assets/goals/g-scales.svg" alt="Вес"></span>
+                  </span>
+                  <span class="goals-sub">Настроены по<br>вашим данным</span>
+                </span>
+              </button>
+              <div class="card row"><b>Измерения тела</b><img src="assets/goals/chevron.svg" alt="" width="20" height="20"></div>
+              <div class="card">
+                <div class="row" style="padding-bottom:21px"><b>Аллергии</b><img src="assets/goals/chevron.svg" alt="" width="20" height="20"></div>
+                <div class="row" style="padding-bottom:21px"><b>Ограничения и травмы</b><img src="assets/goals/chevron.svg" alt="" width="20" height="20"></div>
+              </div>
+            </div>
+            <div class="group"><h3>Настройки</h3></div>
           </div>
-        </div>
-      </div>
+          <nav class="p-tabbar" aria-label="Разделы">
+            <button type="button" class="side" id="tab-stats"><img src="assets/goals/tab-chart.svg" alt="Статистика" width="32" height="32"></button>
+            <img src="assets/goals/tab-ai.svg" alt="" width="44" height="44">
+            <img class="side" src="assets/goals/tab-profile.svg" alt="Профиль" width="32" height="32">
+          </nav>
+        </section>
 
-      <img class="aura" src="assets/ui/ellipse.svg" alt="">
+        <div class="dim" aria-hidden="true"></div>
 
-      <header class="header" aria-hidden="true">
-        <div class="time">20:01</div>
-        <div class="levels">
-          <img class="cellular" src="assets/ui/cellular.svg" alt="">
-          <img class="wifi" src="assets/ui/wifi.svg" alt="">
-          <span class="batt"></span>
-          <img class="cap" src="assets/ui/cap.svg" alt="">
-        </div>
-      </header>
+        <section class="sheet-wrap" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+          <div class="grabber" aria-hidden="true"></div>
+          <div class="modal">
+            <button class="close" type="button" aria-label="Закрыть"><img src="assets/goals/close.svg" alt="" width="24" height="24"></button>
+            <div class="art" aria-hidden="true">
+              <div class="stage">
+                <div class="scene">
+                  <img class="full" src="assets/goals/scene.webp" alt="">
+                  <img src="assets/goals/retouch.svg" alt="" style="left:73.63px;top:231px;width:18.5px;height:18px">
+                </div>
+                <!-- окна: центр и радиус в пунктах картинки; data-goal — в какую медаль полетит предмет -->
+                <div class="win" data-name="flag" data-c="267.9,33.8,14"></div>
+                <div class="win" data-name="bowl" data-goal="meal" data-c="195,62,40"></div>
+                <div class="win" data-name="bottle" data-goal="water" data-c="281,98,36"></div>
+                <div class="win" data-name="scale" data-goal="scales" data-c="32.5,126.8,25"></div>
+                <div class="win" data-name="bars" data-goal="fire" data-c="249,172,23"></div>
+                <div class="win" data-name="shoe" data-goal="walk" data-c="271,182.5,30"></div>
+                <div class="moon" data-name="moon" data-goal="sleep"><img src="assets/goals/moon.webp" alt=""></div>
+              </div>
+            </div>
+            <div class="copy">
+              <h1 id="sheet-title">Настроим ориентиры<br>на каждый день?</h1>
+              <p>Подберём ориентиры по питанию, активности, воде, шагам и сну с учётом ваших данных — чтобы вам было проще следить за прогрессом.</p>
+            </div>
+            <div class="actions">
+              <div class="btn-wrap"><button class="btn btn-primary" id="go" type="button">Продолжить</button></div>
+              <button class="btn" id="later" type="button">В другой раз</button>
+            </div>
+          </div>
+        </section>
 
-      <section class="sheet">
-        <div class="copy">
-          <h1>Поможем сохранить курс</h1>
-          <p>Итоги недели, ваш прогресс и<br>рекомендации будут приходить, даже<br>когда приложение закрыто. Управлять<br>уведомлениями можно в профиле.</p>
-        </div>
-        <div class="actions">
-          <div class="btn-wrap"><button class="btn btn-primary" id="connect" type="button">
-            <span class="ask">Подключить</span>
-            <span class="done" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5l3.6 3.5 7.4-8" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Подключено
-            </span>
-          </button></div>
-          <button class="btn" id="later" type="button">Позже</button>
-        </div>
-      </section>
-      <div class="home" aria-hidden="true"></div>
+        <div class="fly" aria-hidden="true"></div>
+        <div class="home" aria-hidden="true"></div>
       </div>
       <section class="stats" id="stats" aria-label="Статистика"></section>
     </main>
@@ -302,14 +311,11 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
 <script src="stats.js"></script>
 <script>
 (() => {
-  const art = document.querySelector('.art');
-  const connect = document.getElementById('connect');
   const params = new URLSearchParams(location.search);
+  const SLOW = Math.max(1, +params.get('slow') || 1);      // ?slow=4 — всё движение вчетверо медленнее
   let timers = [];
-  const SLOW = Math.max(1, +params.get('slow') || 1);      // ?slow=4 — всё движение вчетверо медленнее: так удобно рассматривать кривые
   const later = (fn, ms) => timers.push(setTimeout(fn, ms * SLOW));
   const clear = () => { timers.forEach(clearTimeout); timers = []; };
-  const set = (s) => { art.dataset.state = s; };
 
   // подгонка телефона под окно; на самом телефоне — без рамки
   const fit = () => {
@@ -324,209 +330,237 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   };
   addEventListener('resize', fit); fit();
 
-  const screen = document.querySelector('.screen');
+  const $ = (q) => document.querySelector(q);
+  const screen = $('.screen'), intro = $('.intro'), profile = $('.profile');
+  const sheet = $('.sheet-wrap'), dim = $('.dim'), art = $('.art'), stage = $('.stage'), fly = $('.fly');
+  const go = $('#go'), btnWrap = $('.btn-wrap');
   const view = (v) => { screen.dataset.view = v; };
-
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (params.has('mock')) art.classList.add('mock');
-  const hand = art.querySelector('.hand-move'), floater = art.querySelector('.hand-float');
-  const ring4 = art.querySelector('.ring-4'), seat = art.querySelector('.seat'), btnWrap = document.querySelector('.btn-wrap');
-  const heldEl = art.querySelector('.held'), glowWrap = art.querySelector('.glow-wrap');
-  const bells = [...art.querySelectorAll('.bell')], claps = [...art.querySelectorAll('.bell .clap')];
-  const tokens = [...art.querySelectorAll('.token[data-day]')], ghosts = [...art.querySelectorAll('.ghost')];
-  const OUT = 'cubic-bezier(.23, 1, .32, 1)';
+  const MOCK = params.has('mock');
+  if (MOCK) art.classList.add('mock');
 
   // ---------- Пружины ----------
-  // Всё, что отзывается на палец, двигают пружины, а не переходы с заданной длительностью.
-  // Переход каждый раз стартует с места и на полной скорости; пружина при смене цели сохраняет скорость,
-  // поэтому «покой → касание → посадка → уход» — одно непрерывное движение, а не четыре рывка.
-  // Пара чисел: время отклика, с (за него пружина проходит основной путь) и доля затухания (1 — без перелёта).
+  // Всё, что отзывается на палец и летит, двигают пружины: при смене цели они сохраняют скорость,
+  // поэтому движение не рвётся на стыках. Пара чисел: время отклика, с, и доля затухания (1 — без перелёта).
   const SPRING = {
-    enter: [0.75, 0.92],   // вход: рука влетает уже на скорости и тормозит над четвёртым днём
-    rise:  [0.90, 1],      // по вертикали чуть медленнее — путь выходит дугой
-    touch: [0.24, 1],      // палец на кнопке: половина пути за 64 мс, без перелёта
-    land:  [0.28, 0.85],   // отпустили: галочка в кружке через ~170 мс
-    back:  [0.40, 0.86],   // передумали: рука возвращается
-    hover: [0.36, 1],
-    hint:  [0.80, 1],      // намёк: медленный вдох и выдох
-    leave: [0.62, 1],      // рука уходит
-    float: [1.20, 1],      // покачивание в покое нарастает и гаснет плавно
-    bell:  [0.30, 0.14],   // колокольчик — маятник: качается и затухает сам
-    clap:  [0.20, 0.30],   // язычок догоняет колокольчик с опозданием
-    squash:[0.26, 0.45],   // шар пружинит при посадке
+    sheet: [0.50, 1],      // шторка: как системная на iOS
+    away:  [0.42, 1],      // шторка уходит быстрее, чем пришла
+    zoom:  [0.90, 1],      // картинка «доезжает» за шторкой чуть позже — глубина
+    hop:   [0.34, 0.55],   // предмет подпрыгивает на месте
+    flag:  [0.45, 0.12],   // флажок полощется и успокаивается сам
+    touch: [0.24, 1],      // палец на кнопке
+    back:  [0.40, 0.86],   // передумали
+    flyY:  [0.46, 0.90],   // полёт в медаль: вниз быстрее,
+    flyX:  [0.60, 0.86],   //   вбок медленнее — монета падает по дуге, а не висит над экраном
+    shrink:[0.46, 1],
+    medal: [0.30, 0.45],   // медаль принимает предмет: короткий толчок
+    btn:   [0.50, 0.60],   // кнопка «вздыхает» в конце волны
   };
-  const REST = [0, 0], HINT = [5, 11], HOVER = [4, 9], DOWN = [16, 35], PLACE = [28.57, 62.2], OFF = [-230, 44], AWAY = [-56, -64];
-  const DAY_X = [-174, -106, -38];        // сдвиг руки, при котором шар оказывается над 1-м, 2-м и 3-м днём
 
   const all = [];
-  const spring = (x, eps, cfg) => { const s = { x, v: 0, to: x, k: 0, c: 0, eps }; tune(s, cfg); all.push(s); return s; };
   const tune = (s, [response, damping]) => { const w = 2 * Math.PI / response; s.k = w * w; s.c = 2 * damping * w; };   // жёсткость (2π/T)², вязкость 4πζ/T
+  const spring = (x, eps, cfg) => { const s = { x, v: 0, to: x, k: 0, c: 0, eps }; tune(s, cfg); all.push(s); return s; };
+  const drop = (...list) => list.forEach((s) => { const i = all.indexOf(s); if (i >= 0) all.splice(i, 1); });
   const aim = (s, to, cfg) => { s.to = to; if (cfg) tune(s, cfg); wake(); };
   const jump = (s, x) => { s.x = s.to = x; s.v = 0; };
-  const kick = (s, v) => { if (!calm) { s.v += v; wake(); } };
+  const kick = (s, v, cfg) => { if (calm) return; if (cfg) tune(s, cfg); s.v += v; wake(); };
 
-  const hx = spring(OFF[0], 0.02, SPRING.enter), hy = spring(OFF[1], 0.02, SPRING.rise);
-  const ring = spring(1, 0.0004, SPRING.touch), btn = spring(1, 0.0004, SPRING.touch), sq = spring(1, 0.0004, SPRING.squash);
-  const fl = spring(0, 0.002, SPRING.float), bell = spring(0, 0.03, SPRING.bell), clap = spring(0, 0.03, SPRING.clap);
+  const OFF = 820;                                                          // шторка за нижним краем
+  const sy = spring(OFF, 0.05, SPRING.sheet), zoom = spring(1, 0.0003, SPRING.zoom), btn = spring(1, 0.0003, SPRING.touch);
 
-  let last = 0, running = false, clock = 0;
-  let pin = null;                                                          // где шар встал в кружок: с этого мига он стоит, а рука уходит из-под него
+  // окна и луна: у каждого свои пружины подскока, масштаба и (у флажка) наклона
+  const items = [...art.querySelectorAll('.win, .moon')].map((el, i) => {
+    const it = { el, name: el.dataset.name, goal: el.dataset.goal, y: spring(0, 0.01, SPRING.hop), s: spring(1, 0.0003, SPRING.touch), k: spring(0, 0.01, SPRING.flag), ph: i * 1.3 };
+    if (el.dataset.c) {
+      const [cx, cy, r] = el.dataset.c.split(',').map(Number);
+      Object.assign(it, { cx, cy, r });
+      Object.assign(el.style, { left: cx - r + 'px', top: cy - r + 'px', width: 2 * r + 'px', height: 2 * r + 'px', backgroundPosition: `${r - cx}px ${r - cy}px` });
+    } else Object.assign(it, { cx: 313, cy: 44, r: 17 });
+    if (it.name === 'flag') el.style.transformOrigin = '0% 60%';             // флажок крепится к древку слева
+    return it;
+  });
+  const byName = Object.fromEntries(items.map((it) => [it.name, it]));
+  const medals = Object.fromEntries([...document.querySelectorAll('.medal')].map((m) => [m.dataset.goal, { el: m, s: spring(1, 0.0003, SPRING.medal) }]));
+  let flights = [];
+
+  // ---------- Кадр ----------
+  let last = 0, running = false, clock = 0, idle = 0;                         // idle — сила покачивания в покое, 0…1
   const draw = () => {
-    const ph = Math.sin(clock * Math.PI / 5) * fl.x;                       // покой: ±2 pt и ±0,7° за 10 с
-    hand.style.transform = `translate(${hx.x.toFixed(2)}px, ${hy.x.toFixed(2)}px)`;
-    floater.style.transform = `translateY(${(ph * 2).toFixed(2)}px) rotate(${(ph * 0.7).toFixed(3)}deg)`;
-    ring4.style.transform = `scale(${ring.x.toFixed(4)})`;
+    sheet.style.transform = `translateY(${sy.x.toFixed(2)}px)`;
+    dim.style.opacity = (0.65 * Math.max(0, Math.min(1, 1 - sy.x / OFF))).toFixed(3);
+    stage.style.transform = `scale(${zoom.x.toFixed(4)})`;
     btnWrap.style.transform = `scale(${btn.x.toFixed(4)})`;
-    const squash = `scale(${(2 - sq.x).toFixed(4)}, ${sq.x.toFixed(4)})`;
-    const stay = pin ? `translate(${(pin[0] - hx.x).toFixed(2)}px, ${(pin[1] - hy.x).toFixed(2)}px) ` : '';
-    heldEl.style.transform = pin ? stay + squash : '';
-    glowWrap.style.transform = stay;
-    seat.style.transform = pin ? `translate(${(pin[0] - PLACE[0]).toFixed(2)}px, ${(pin[1] - PLACE[1]).toFixed(2)}px) ${squash}` : '';
-    const b = `rotate(${bell.x.toFixed(2)}deg)`, c = `rotate(${((clap.x - bell.x) * 1.5).toFixed(2)}deg)`;
-    bells.forEach((el) => { el.style.transform = b; });
-    claps.forEach((el) => { el.style.transform = c; });
+    for (const it of items) {
+      const f = Math.sin(clock * 2 * Math.PI / 4.6 + it.ph) * idle;                         // покой: ±1,2 pt за 4,6 с
+      if (it.name === 'flag') {
+        const w = Math.sin(clock * 2 * Math.PI / 2.2) * idle * 3 + it.k.x;                   // флажок полощется: наклон ±3°
+        it.el.style.transform = `skewY(${w.toFixed(2)}deg) scaleX(${(1 - Math.abs(w) * 0.006).toFixed(4)})`;
+      } else it.el.style.transform = `translateY(${(it.y.x + f * 1.2).toFixed(2)}px) scale(${it.s.x.toFixed(4)})`;
+    }
+    for (const fl of flights) fl.el.style.transform = `translate(${fl.x.x.toFixed(2)}px, ${fl.y.x.toFixed(2)}px) scale(${fl.s.x.toFixed(4)})`;
+    for (const m of Object.values(medals)) m.el.style.transform = m.s.x === 1 ? '' : `scale(${m.s.x.toFixed(4)})`;
   };
   const frame = (t) => {
     const dt = Math.min(0.034, last ? (t - last) / 1000 : 1 / 60) / SLOW; last = t; clock += dt;
-    clap.to = bell.x;
     for (let n = Math.ceil(dt / 0.004), h = dt / (n || 1); n > 0; n--) for (const s of all) { s.v += (-s.k * (s.x - s.to) - s.c * s.v) * h; s.x += s.v * h; }
-    let moving = fl.to > 0;                                                // пока рука покачивается, цикл не останавливается
+    let moving = idle > 0 && state === 'open';
     for (const s of all) { if (Math.abs(s.x - s.to) > s.eps || Math.abs(s.v) > s.eps * 30) moving = true; else { s.x = s.to; s.v = 0; } }
     draw(); watch();
-    if (moving) requestAnimationFrame(frame); else { running = false; last = 0; }
+    if (moving || flights.length) requestAnimationFrame(frame); else { running = false; last = 0; }
   };
   const wake = () => { if (!running) { running = true; last = 0; requestAnimationFrame(frame); } };
   if (SLOW > 1) (function slow() { document.getAnimations().forEach((a) => { a.playbackRate = 1 / SLOW; }); requestAnimationFrame(slow); })();
 
-  // Пружинная кривая для готовых анимаций (галочки на входе): та же физика, записанная точками.
-  const springEase = (response, damping) => {
-    const w = 2 * Math.PI / response, wd = w * Math.sqrt(1 - damping * damping), T = 5 / (damping * w), N = 28, pts = [];
-    for (let i = 0; i <= N; i++) { const t = T * i / N; pts.push(i === N ? 1 : +(1 - Math.exp(-damping * w * t) * (Math.cos(wd * t) + damping * w / wd * Math.sin(wd * t))).toFixed(3)); }
-    const ok = window.CSS && CSS.supports('transition-timing-function', 'linear(0, 1)');
-    return ok ? { duration: Math.round(T * 1000), easing: `linear(${pts.join(', ')})` } : { duration: 260, easing: OUT };
-  };
-  const POP = springEase(0.32, 0.5);
+  // ---------- Состояния ----------
+  // closed — профиль без шторки; open — шторка открыта; down — палец на «Продолжить»; flying — предметы летят в медали; set — ориентиры настроены
+  let state = 'closed';
+  const setState = (s) => { state = s; intro.classList.toggle('open', s === 'open' || s === 'down'); };
 
-  // поза руки: положение, размер пустого кружка и кнопки — одной пружиной, поэтому двигаются как одно целое
-  const pose = (xy, cfg, ringTo, btnTo) => { if (calm) return; aim(hx, xy[0], cfg); aim(hy, xy[1], cfg); aim(ring, ringTo, cfg); aim(btn, btnTo, cfg); };
-  const sway = (on, cfg) => { if (!calm) aim(fl, on ? 1 : 0, cfg || SPRING.float); };
-  const state = () => art.dataset.state;
-
-  // галочка дня встаёт в тот миг, когда над ним проходит шар: событие привязано к положению руки, а не к таймеру
-  let waiting = new Set();
-  const tick = (i) => {
-    waiting.delete(i); ghosts[i].classList.remove('on');
-    const t = tokens[i]; t.classList.remove('wait');
+  // Волна по пути — от флажка вдаль к ближним предметам, и в конце кнопка: внимание стекает к действию.
+  const WAVE = ['flag', 'moon', 'bowl', 'bottle', 'scale', 'bars', 'shoe'];
+  const wave = (start = 0) => {
     if (calm) return;
-    t.animate([{ transform: 'scale(.86)' }, { transform: 'none' }], { duration: POP.duration, easing: POP.easing });
-    t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 110, easing: 'ease-out' });
+    WAVE.forEach((n, i) => later(() => {
+      if (state !== 'open') return;
+      const it = byName[n]; if (!it || (MOCK && n === 'moon')) return;
+      if (n === 'flag') kick(it.k, 70, SPRING.flag); else kick(it.y, -70, SPRING.hop);
+    }, start + i * 70));
+    later(() => { if (state === 'open') kick(btn, 0.35, SPRING.btn); }, start + WAVE.length * 70 + 30);
   };
-  const watch = () => {
-    if (waiting.size) [...waiting].forEach((i) => { if (hx.x >= DAY_X[i]) tick(i); });
-    const s = state();
-    if (s === 'enter' && Math.abs(hx.x) < 1.5 && Math.abs(hy.x) < 1.5) { set('idle'); sway(true); hintOn(); }
-    else if (s === 'placing' && (hy.x >= PLACE[1] - 1.5 || Math.hypot(hx.x - PLACE[0], hy.x - PLACE[1]) < 1.5)) land();
-    else if (s === 'placed' && pin && !art.classList.contains('clear') && Math.hypot(hx.x - pin[0], hy.x - pin[1]) > 52) clearOff();
+  // Редкий намёк в покое: та же волна. Первый раз через 3 с после открытия, дальше раз в 7 с.
+  let hintTimer = 0;
+  const hintOff = () => clearTimeout(hintTimer);
+  const hintOn = (wait = 3000) => { hintOff(); if (calm) return; hintTimer = setTimeout(() => { if (state === 'open') { wave(); hintOn(7000); } }, wait * SLOW); };
+
+  const reset = () => {
+    clear(); hintOff();
+    flights.forEach((f) => { f.el.remove(); drop(f.x, f.y, f.s); }); flights = [];
+    jump(sy, OFF);
+    items.forEach((it) => { jump(it.y, 0); jump(it.s, 1); jump(it.k, 0); it.el.style.visibility = ''; });
+    Object.values(medals).forEach((m) => { jump(m.s, 1); m.el.classList.remove('on'); });
+    jump(btn, 1); jump(zoom, 1);
+    art.classList.remove('press', 'lift');
+    profile.classList.remove('set');
+    idle = 0;
   };
 
-  // Редкий намёк: рука медленно опускает шар к пустому кружку, колокольчик чуть качается, кнопка приподнимается вместе с ними.
-  // Первый раз — через 2,6 с покоя, дальше раз в 7 с. Любое касание кнопки намёк отменяет.
-  let hintTimer = 0, hinting = false;
-  const hintOff = () => { clearTimeout(hintTimer); hinting = false; };
-  const hintOn = (wait = 2600) => {
-    hintOff();
-    if (calm) return;
-    hintTimer = setTimeout(() => {
-      if (state() !== 'idle') return;
-      hinting = true; pose(HINT, SPRING.hint, 1.04, 1.018); kick(bell, 120);
-      hintTimer = setTimeout(() => { if (hinting && state() === 'idle') pose(REST, SPRING.hint, 1, 1); hintOn(7000); }, 640 * SLOW);
-    }, wait * SLOW);
+  // Вход: шторка поднимается над профилем, затемнение привязано к её положению.
+  // Картинка «доезжает» на долю секунды позже — так видна глубина. Когда шторка почти на месте, по пути проходит волна.
+  const open = () => {
+    clear(); hintOff();
+    view('intro');
+    setState('open');
+    if (calm) { jump(sy, 0); draw(); return; }
+    jump(zoom, 1.06);
+    aim(sy, 0, SPRING.sheet); aim(zoom, 1, SPRING.zoom);
+    idle = MOCK ? 0 : 1;
+    wave(380);
+    hintOn(3400);
   };
-
-  const rest = () => { pin = null; art.classList.remove('clear'); [[hx, 0], [hy, 0], [ring, 1], [btn, 1], [sq, 1], [bell, 0], [clap, 0], [fl, calm || art.classList.contains('mock') ? 0 : 1]].forEach(([s, x]) => jump(s, x)); waiting.clear(); tokens.forEach((t) => t.classList.remove('wait')); ghosts.forEach((g) => g.classList.remove('on')); draw(); wake(); };
-
-  // Вход — один жест, и он ничего не загораживает: текст и кнопки стоят с первого кадра.
-  // Рука влетает слева уже на скорости и тормозит над четвёртым днём; пролетая над тремя первыми, отмечает их.
+  const close = () => {
+    clear(); hintOff();
+    setState(profile.classList.contains('set') ? 'set' : 'closed');
+    idle = 0;
+    if (calm) { jump(sy, OFF); draw(); return; }
+    aim(sy, OFF, SPRING.away);
+  };
   const enter = () => {
-    clear(); hintOff();
-    connect.classList.remove('is-done');
-    view('intro'); window.Stats.reset();
-    art.classList.add('no-anim'); set('pre');
-    rest();
-    if (!calm) {
-      jump(hx, OFF[0]); jump(hy, OFF[1]); jump(fl, 0);
-      waiting = new Set([0, 1, 2]); tokens.forEach((t) => t.classList.add('wait')); ghosts.forEach((g) => g.classList.add('on'));
-      draw();
+    reset(); window.Stats.reset(); setState('closed'); view('intro');
+    draw();
+    if (calm) { open(); return; }
+    later(open, 260);                                      // сначала виден профиль, потом поднимается шторка
+  };
+
+  // Кнопка ведёт предметы. Палец лёг на «Продолжить» — предметы на картинке чуть приподнимаются, картинка за ними светлеет;
+  // увели палец — всё возвращается; отпустили — предметы срываются с картинки и летят в медали «Мои цели».
+  const press = () => {
+    if (state !== 'open') return false;
+    clear(); hintOff(); setState('down');
+    if (calm) return true;                                   // без движения: только состояние
+    art.classList.add('press');
+    items.forEach((it) => { if (it.name !== 'flag') aim(it.s, 1.05, SPRING.touch); });
+    aim(btn, 0.97, SPRING.touch);
+    return true;
+  };
+  const release = () => {
+    if (state !== 'down') return;
+    setState('open'); art.classList.remove('press');
+    items.forEach((it) => aim(it.s, 1, SPRING.back));
+    aim(btn, 1, SPRING.back);
+    hintOn(4000);
+  };
+
+  const pt = (el) => {                                       // положение элемента в пунктах экрана
+    const s = +getComputedStyle(document.documentElement).getPropertyValue('--s') || 1, a = screen.getBoundingClientRect(), r = el.getBoundingClientRect();
+    return { x: (r.left - a.left) / s, y: (r.top - a.top) / s, w: r.width / s, h: r.height / s };
+  };
+
+  const finish = () => {
+    if (state !== 'open' && state !== 'down') return;
+    clear(); hintOff(); setState('flying'); idle = 0;
+    if (calm) {
+      Object.values(medals).forEach((m) => m.el.classList.add('on'));
+      profile.classList.add('set'); jump(sy, OFF); draw(); setState('set'); return;
     }
-    void art.offsetWidth;
-    art.classList.remove('no-anim');
-    if (calm) { set('idle'); return; }
-    set('enter');
-    hx.v = 1400;                                        // вход начинается на скорости: предмет прилетает, а не трогается с места на виду
-    aim(hx, 0, SPRING.enter); aim(hy, 0, SPRING.rise); aim(ring, 1, SPRING.touch); aim(btn, 1, SPRING.touch);
+    art.classList.remove('press'); art.classList.add('lift');           // предметы становятся чёткими монетами, картинка за ними тает
+    aim(btn, 1, SPRING.back);
+    const order = ['meal', 'water', 'fire', 'walk', 'sleep', 'scales'];
+    later(() => {
+      // копии предметов — в слой над шторкой, ровно там, где предметы сейчас; оригиналы прячутся
+      order.forEach((g, i) => {
+        const it = items.find((x) => x.goal === g), m = medals[g], r = pt(it.el), size = 2 * it.r;
+        const el = document.createElement('div');
+        if (it.name === 'moon') { el.className = 'moon-coin'; el.innerHTML = '<img src="assets/goals/moon.webp" alt="">'; }
+        else { el.className = 'win'; el.style.backgroundPosition = it.el.style.backgroundPosition; el.style.setProperty('--f', '97%'); }
+        Object.assign(el.style, { left: r.x + 'px', top: r.y + 'px', width: size + 'px', height: size + 'px', transformOrigin: '0 0' });
+        fly.appendChild(el); it.el.style.visibility = 'hidden';
+        const mp = pt(m.el), dx = mp.x + mp.w / 2 - 13 - r.x, dy = mp.y + mp.h / 2 - 13 - r.y;   // монета 26 pt — в центр медали
+        const f = { el, m, x: spring(0, 0.3, SPRING.flyX), y: spring(0, 0.3, SPRING.flyY), s: spring(r.w / size, 0.002, SPRING.shrink), dx, dy, done: false };
+        flights.push(f);
+        later(() => { aim(f.x, dx); aim(f.y, dy); aim(f.s, 26 / size); }, i * 35);
+      });
+      aim(sy, OFF, SPRING.away);                                        // шторка уходит вниз, предметы летят над ней
+      draw();
+    }, 60);
+  };
+  // монета долетела: медаль принимает её — заливается и коротко вздрагивает
+  const watch = () => {
+    for (const f of flights) {
+      if (f.done || Math.hypot(f.x.x - f.dx, f.y.x - f.dy) > 1.5) continue;
+      f.done = true;
+      f.m.el.classList.add('on'); kick(f.m.s, 2.4, SPRING.medal);
+      f.el.classList.add('gone');
+      setTimeout(() => { f.el.remove(); drop(f.x, f.y, f.s); flights = flights.filter((x) => x !== f); }, 160 * SLOW);
+      if (flights.every((x) => x.done)) later(() => { profile.classList.add('set'); setState('set'); }, 120);
+    }
   };
 
-  // Кнопка ведёт руку. Палец лёг на кнопку — рука уже опускает шар; отпустили — шар встаёт в кружок;
-  // увели палец в сторону — рука возвращается. Отклик начинается в том же кадре, что и касание.
-  const ready = () => ['idle', 'lean', 'enter'].includes(state());
-  const down = () => { set('down'); sway(false, SPRING.touch); pose(DOWN, SPRING.touch, 1.08, 0.97); };
-  const up = (wait) => { set('idle'); sway(true); pose(REST, SPRING.back, 1, 1); if (wait) hintOn(wait); };
-  const press = () => { if (!ready()) return false; clear(); hintOff(); down(); return true; };
-  const release = () => { if (state() === 'down') up(4000); };
-  const place = () => {
-    if (!['down', 'idle', 'lean', 'enter'].includes(state())) return;
-    clear(); hintOff();
-    connect.classList.add('is-done');
-    if (calm) { [...waiting].forEach(tick); set('placed'); art.classList.add('clear'); if (!params.has('stay')) later(() => view('stats'), 700); return; }
-    set('placing'); sway(false, SPRING.touch);
-    aim(hx, PLACE[0], SPRING.land); aim(hy, PLACE[1], SPRING.land); aim(ring, 1.08, SPRING.land); aim(btn, 1, SPRING.back);
-  };
-  // Шар коснулся кружка. Рука не останавливается: с той же скоростью уходит дальше и в сторону,
-  // а шар остаётся под её пальцами. Шар пружинит, колокольчик звенит.
-  const land = () => {
-    [...waiting].forEach(tick);
-    pin = [hx.x, hy.x];
-    set('placed');
-    aim(hx, AWAY[0], SPRING.leave); aim(hy, AWAY[1], SPRING.leave); aim(ring, 1, SPRING.land);
-    kick(sq, -1.7); kick(bell, 300);
-  };
-  // Рука сошла с шара: теперь она гаснет, а шар переворачивается галочкой (переворот и завтрашний колокольчик — в CSS).
-  const clearOff = () => {
-    art.classList.add('clear');
-    later(() => kick(bell, 130), 460);                  // завтрашний колокольчик появляется и отзывается
-    if (!params.has('stay')) later(() => view('stats'), 820);
-  };
-
-  const inside = (e) => { const r = connect.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom; };
+  const inside = (e) => { const r = go.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom; };
   let held = false;
-  connect.addEventListener('pointerdown', (e) => { if (e.button) return; held = press(); if (held) { try { connect.setPointerCapture(e.pointerId); } catch (err) { /* указатель не настоящий */ } } });
-  connect.addEventListener('pointerup', (e) => { if (!held) return; held = false; if (inside(e)) place(); else release(); });
-  connect.addEventListener('pointercancel', () => { held = false; release(); });
-  connect.addEventListener('pointermove', (e) => {          // палец съехал с кнопки — рука отступает, вернулся — снова опускает
-    if (!held) return;
-    if (!inside(e) && state() === 'down') up(); else if (inside(e) && state() === 'idle') down();
-  });
-  connect.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && state() === 'idle') { hintOff(); set('lean'); pose(HOVER, SPRING.hover, 1.03, 1); } });
-  connect.addEventListener('pointerleave', () => { if (state() === 'lean') up(4000); });
-  connect.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) press(); });
-  connect.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') place(); });
-  connect.addEventListener('click', (e) => { if (e.detail === 0) place(); });      // нажатие без указателя и клавиш: вспомогательные технологии
+  go.addEventListener('pointerdown', (e) => { if (e.button) return; held = press(); if (held) { try { go.setPointerCapture(e.pointerId); } catch (err) { /* указатель не настоящий */ } } });
+  go.addEventListener('pointerup', (e) => { if (!held) return; held = false; if (inside(e)) finish(); else release(); });
+  go.addEventListener('pointercancel', () => { held = false; release(); });
+  go.addEventListener('pointermove', (e) => { if (!held) return; if (!inside(e) && state === 'down') release(); else if (inside(e) && state === 'open') press(); });
+  go.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) press(); });
+  go.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') finish(); });
+  go.addEventListener('click', (e) => { if (e.detail === 0) finish(); });          // нажатие без указателя и клавиш: вспомогательные технологии
 
-  // «Позже»: рука уходит тем же путём, каким пришла, экран закрывается
-  document.getElementById('later').addEventListener('click', () => {
-    if (!ready()) return;
-    clear(); hintOff(); set('rearm'); sway(false); pose(OFF, SPRING.leave, 1, 1);
-    if (params.has('stay')) later(enter, 1300); else later(() => view('stats'), 380);
-  });
-  document.getElementById('replay').addEventListener('click', enter);
+  $('#later').addEventListener('click', close);
+  $('.close').addEventListener('click', close);
+  dim.addEventListener('click', close);
+  // «Мои цели»: пока ориентиры не настроены — снова открывает шторку; после — ведёт в статистику дня
+  $('#goals').addEventListener('click', () => { if (state === 'set') view('stats'); else if (state === 'closed') open(); });
+  $('#tab-stats').addEventListener('click', () => view('stats'));
+  document.getElementById('stats').addEventListener('click', (e) => { if (e.target.closest('img[alt="Профиль"]')) view('intro'); });
+  $('#replay').addEventListener('click', enter);
 
-  const imgs = [...document.querySelectorAll('.art img')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
+  const imgs = [...document.querySelectorAll('.intro img')].map((i) => i.decode ? i.decode().catch(() => {}) : 0);
   Promise.all(imgs).then(() => {
-    if (params.get('screen') === 'stats' || params.has('hold')) { art.classList.add('no-anim'); set('idle'); rest(); if (params.get('screen') === 'stats') view('stats'); }
+    if (params.get('screen') === 'stats') { reset(); profile.classList.add('set'); Object.values(medals).forEach((m) => m.el.classList.add('on')); setState('set'); draw(); view('stats'); }
+    else if (params.has('hold')) { reset(); setState('open'); jump(sy, 0); idle = MOCK ? 0 : 1; draw(); if (!MOCK) { wake(); hintOn(); } }
     else enter();
   });
-  window.__place = place;
-  window.__motion = { hx, hy, btn, ring, bell, state };       // для замеров: tools/trace.js снимает положение и скорость по кадрам
+  window.__motion = { sy, btn, items, medals, state: () => state, finish };
 })();
 </script>
 </body>
