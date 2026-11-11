@@ -96,7 +96,8 @@
 .wz-done::-webkit-scrollbar { display: none; }
 .wiz.final .wz-done { visibility: visible; opacity: 1; transition: opacity 300ms ease; }
 .wz-done .wz-x { position: absolute; top: 64px; right: 24px; }
-.wz-art { position: relative; z-index: 1; width: 300px; height: 236px; margin: 76px auto 0; }
+.wz-art { position: relative; z-index: 1; width: 296px; height: 296px; margin: 60px auto -24px; }
+.wz-art .sx-plate { transition: opacity 300ms ease 60ms; }   /* фон чуть позже предметов: пустые места под ними не успевают показаться */
 /* конфетти — позади заголовка, текста и карточек: празднуют, но не закрывают прочитанное */
 .wz-confetti { position: absolute; left: 0; top: 0; width: 393px; height: 852px; pointer-events: none; z-index: 0; }
 .wz-done .wz-title, .wz-done > p, .wz-done .goal-cards { position: relative; z-index: 1; }

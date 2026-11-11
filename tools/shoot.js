@@ -10,9 +10,9 @@ const FRAMES = path.join(ROOT, '.shots', 'frames');
 const URL = require('url').pathToFileURL(path.join(ROOT, 'index.html')).href;
 const FPS = 30;
 const SECONDS = 14.9;     // профиль → шторка → покой с намёком → «Продолжить» → цели в полоску шагов → анкета → финал → медали → «Цели»
-const DOWN_AT = 4.5, UP_AT = 4.9;
-// нажатия по ходу ролика: [секунда, селектор]
-const TAPS = [6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0].map((t) => [t, '#wz-next']).concat([[12.6, '#wz-done'], [14.2, '#goals']]);
+const DOWN_AT = 4.3, UP_AT = 4.7;
+// нажатия по ходу ролика: [секунда, селектор]. Финал с 8,8 с: появление, конфетти, сальто бутылки, прыжок гантели
+const TAPS = [6.0, 6.4, 6.8, 7.2, 7.6, 8.0, 8.4, 8.8].map((t) => [t, '#wz-next']).concat([[13.2, '#wz-done'], [14.3, '#goals']]);
 
 (async () => {
   fs.rmSync(FRAMES, { recursive: true, force: true });
