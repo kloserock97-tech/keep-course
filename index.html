@@ -177,6 +177,13 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
 .art.lift .sparks { opacity: 0; }
 @media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: #2460e6; } }
 
+/* «Продолжить»: шторка не уезжает и не накрывается вторым окном — она сама раскрывается на весь экран и становится анкетой
+   (гайдлайны iOS: многошаговая задача — в полноэкранном окне, два модальных окна друг на друге не держать) */
+.sheet-wrap.grow { top: 0; transition: top 460ms var(--ease-drawer); }
+.sheet-wrap.grow .modal { inset: 0; border-radius: 0; transition: inset 460ms var(--ease-drawer), border-radius 460ms var(--ease-drawer); }
+.sheet-wrap.grow .grabber, .sheet-wrap.grow .copy, .sheet-wrap.grow .actions, .sheet-wrap.grow .close { opacity: 0; transition: opacity 180ms ease; }
+.sheet-wrap.grow .art { opacity: 0; transition: opacity 280ms ease 120ms; }
+
 /* полёт: копии целей над всем, пока шторка уезжает */
 .fly { position: absolute; z-index: 20; inset: 0; pointer-events: none; }
 .fly > * { position: absolute; transition: opacity 140ms ease; will-change: transform; }
@@ -347,6 +354,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     flyX:  [0.60, 0.86],   //   вбок медленнее — дуга
     shrink:[0.46, 1],
     medal: [0.30, 0.45],
+    unfold:[0.40, 0.70],   // цель выходит из полоски: из мазка расправляется в предмет
+    soak:  [0.16, 1],      // цель впитывается в полоску
     btn:   [0.50, 0.60],
   };
   const all = [];
@@ -438,7 +447,11 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     SET(parts.arm.el, `${body} rotate(${(R('arm') + 16 * Math.sin(ph + Math.PI) * a).toFixed(2)} ${parts.arm.p[0]} ${parts.arm.p[1]})`);
     SET(parts.front.el, `translate(${(px * 0.5).toFixed(2)} ${(bob * 0.35 + py * 0.5).toFixed(2)}) rotate(${(R('front') + 6 * Math.sin(ph) * a).toFixed(2)} ${parts.front.p[0]} ${parts.front.p[1]})`);
     SET(parts.back.el, `translate(${(px * 0.6).toFixed(2)} ${(bob * 0.6 + py * 0.6).toFixed(2)}) rotate(${(R('back') - 8 * Math.sin(ph) * a).toFixed(2)} ${parts.back.p[0]} ${parts.back.p[1]})`);
-    for (const fl of flights) fl.el.style.transform = `translate(${fl.x.x.toFixed(2)}px, ${fl.y.x.toFixed(2)}px) scale(${fl.s.x.toFixed(4)})`;
+    // в полёте цель наклоняется по ходу движения; q < 1 — сплющивается в мазок, когда впитывается в полоску
+    for (const fl of flights) {
+      const tilt = Math.max(-14, Math.min(14, fl.x.v * 0.02)), q = fl.q.x;
+      fl.el.style.transform = `translate(${fl.x.x.toFixed(2)}px, ${fl.y.x.toFixed(2)}px) rotate(${tilt.toFixed(2)}deg) scale(${(fl.s.x * (1 + (1 - q) * 0.9)).toFixed(4)}, ${(fl.s.x * q).toFixed(4)})`;
+    }
     for (const m of Object.values(medals)) m.el.style.transform = m.s.x === 1 ? '' : `scale(${m.s.x.toFixed(4)})`;
   };
   const frame = (t) => {
@@ -493,6 +506,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     art.classList.remove('press', 'lift');
     profile.classList.remove('set');
     W.reset(); Object.values(fin).forEach((p) => p.el.classList.remove('on', 'land'));
+    W.el.querySelectorAll('.wz-confetti').forEach((e) => e.remove()); sheet.classList.remove('grow');
     idle = 0;
   };
 
@@ -564,7 +578,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   // Цель срывается копией в слой .fly и летит на пружинах: по вертикали быстрее, вбок медленнее — путь дугой.
   const K = 338 / 1254, NSV = 'http://www.w3.org/2000/svg';
   const W = window.Wizard, segs = W.segs;
-  const coin = (g, cx, cy, s0) => {
+  const coin = (g, cx, cy, s0, q0 = 1) => {
     const bb = g.bb || (g.bb = g.el.getBBox());
     const w = (bb.width + 8) * K, h = (bb.height + 8) * K;
     const el = document.createElement('div'); el.className = 'coin';
@@ -573,14 +587,17 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     el.firstChild.appendChild(copy);
     Object.assign(el.style, { left: (cx - w / 2) + 'px', top: (cy - h / 2) + 'px', width: w + 'px', height: h + 'px', transformOrigin: '50% 50%' });
     fly.appendChild(el);
-    const f = { el, g, w, h, cx, cy, x: spring(0, 0.3, SPRING.flyX), y: spring(0, 0.3, SPRING.flyY), s: spring(s0, 0.002, SPRING.shrink), dx: 0, dy: 0, armed: false, done: false, land: null };
+    const f = { el, g, w, h, cx, cy, x: spring(0, 0.3, SPRING.flyX), y: spring(0, 0.3, SPRING.flyY), s: spring(s0, 0.002, SPRING.shrink), q: spring(q0, 0.004, SPRING.unfold), dx: 0, dy: 0, armed: false, done: false, land: null };
     flights.push(f); draw(); return f;
   };
   const launch = (f, tx, ty, ts, delay, land) => {
     f.dx = tx - f.cx; f.dy = ty - f.cy; f.land = land;
-    later(() => { f.armed = true; aim(f.x, f.dx); aim(f.y, f.dy); aim(f.s, ts); }, delay);
+    later(() => { f.armed = true; aim(f.x, f.dx); aim(f.y, f.dy); aim(f.s, ts); aim(f.q, 1); }, delay);
   };
-  const retire = (f) => { f.done = true; f.el.classList.add('gone'); setTimeout(() => { f.el.remove(); drop(f.x, f.y, f.s); flights = flights.filter((x) => x !== f); }, 160 * SLOW); };
+  const retire = (f, ms = 160) => { f.done = true; f.el.classList.add('gone'); setTimeout(() => { f.el.remove(); drop(f.x, f.y, f.s, f.q); flights = flights.filter((x) => x !== f); }, ms * SLOW); };
+  // цель садится в полоску: сплющивается в мазок и гаснет, а деление прорисовывается из точки посадки
+  const soak = (f, sg) => { aim(f.q, 0.18, SPRING.soak); aim(f.s, f.s.x * 0.7, SPRING.soak); f.el.style.transitionDuration = '200ms'; retire(f, 220); ink(sg); };
+  const ink = (sg) => { sg.classList.remove('wait', 'ink'); void sg.offsetWidth; sg.classList.add('ink'); };
   const centre = (el) => { const r = pt(el); return [r.x + r.w / 2, r.y + r.h / 2]; };
 
   // Цели и шаги анкеты: каждая цель — деление своего шага. Флажок — финиш, в последнее деление.
@@ -604,7 +621,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
 
   // Отпустили «Продолжить». В продукте здесь крутится загрузка, а потом открывается анкета из 8 шагов.
   // Вместо пустой загрузки: бегун толкается, цели срываются с картинки и встают в полоску шагов анкеты —
-  // каждая в деление своего шага, деление появляется, когда цель до него долетает. Анкета проступает поверх шторки.
+  // каждая в деление своего шага. Полоска прорисовывается слева направо: первые два деления (параметры и активность)
+  // сразу, остальные — когда в них садится цель. Сама шторка в это время раскрывается на весь экран и становится анкетой.
   const finish = () => {
     if (state !== 'open' && state !== 'down') return;
     clear(); hintOff(); setState('flying'); idle = 0;
@@ -615,7 +633,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     goals.forEach((g) => { g.fl = null; });
     aim(road, 1, [0.2, 1]); goals.forEach(grow); aim(stride, 0, [0.2, 1]);   // нажали посреди появления — сцена быстро дособирается
     pose({ lean: -2, bob: -6, arm: -9, front: 5, back: -4, head: 1.5, px: 34, py: -44 }, SPRING.push);
-    segs.forEach((sg, i) => { if (i >= 2) sg.classList.add('wait'); });
+    segs.forEach((sg) => sg.classList.add('wait'));
     const first = W.el.querySelector('.wz-step'); first.classList.add('rise');
     later(() => {
       art.classList.add('lift');
@@ -623,11 +641,13 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
         const g = byName[n], r = pt(g.el), f = coin(g, r.x + r.w / 2, r.y + r.h / 2, 1);
         g.el.style.visibility = 'hidden';
         const sg = segs[SEG[n]], [tx, ty] = centre(sg);
-        launch(f, n === 'flag' ? tx + sg.offsetWidth * 0.35 : tx, ty, 10 / Math.max(f.w, f.h), i * 45, () => { sg.classList.remove('wait'); retire(f); });
+        launch(f, n === 'flag' ? tx + sg.offsetWidth * 0.3 : tx, ty, 16 / Math.max(f.w, f.h), 60 + i * 55, () => soak(f, sg));
       });
-      later(() => W.el.classList.add('on'), 120);                       // анкета проступает, когда цели уже в воздухе
-      later(() => first.classList.remove('rise'), 380);
-      later(() => { jump(sy, OFF); draw(); setState('wizard'); }, 520);
+      sheet.classList.add('grow');                                       // шторка раскрывается в полный экран
+      W.el.classList.add('on', 'clear');                                 // поверх неё проступают кнопки, полоска и первый шаг
+      later(() => ink(segs[0]), 120); later(() => ink(segs[1]), 190);
+      later(() => first.classList.remove('rise'), 560);                // первый шаг всплывает, когда цели уже сели
+      later(() => { W.el.classList.remove('clear'); jump(sy, OFF); sheet.classList.remove('grow'); draw(); setState('wizard'); }, 560);
     }, 200);
   };
 
@@ -638,12 +658,45 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     const from = Object.fromEntries(OBJ.map((n) => [n, centre(segs[SEG[n]])]));
     W.el.classList.add('final'); W.el.querySelector('.wz-bar').classList.add('gone');
     if (calm) { Object.values(fin).forEach((p) => p.el.classList.add('on')); W.el.classList.add('shown'); return; }
+    let landed = 0;
     OBJ.forEach((n, i) => {
-      const p = fin[n], [x, y] = from[n], f = coin(byName[n], n === 'flag' ? x + 10 : x, y, 0.02);
+      const p = fin[n], [x, y] = from[n], f = coin(byName[n], n === 'flag' ? x + 10 : x, y, 0.14, 0.18);   // выходит из полоски мазком
       const [tx, ty] = centre(p.el);
-      launch(f, tx, ty, p.s, 80 + i * 60, () => { p.el.classList.add('on', 'land'); retire(f); });
+      launch(f, tx, ty, p.s, 80 + i * 60, () => { p.el.classList.add('on', 'land'); retire(f); if (++landed === OBJ.length) confetti(); });
     });
     later(() => W.el.classList.add('shown'), 420);
+  };
+
+  // Конфетти на финале — как в продукте, но тише: только синие, один залп из верхних углов, 1,9 с,
+  // и позади заголовка, текста и карточек — празднуют, но ничего не закрывают. При «уменьшить движение» их нет.
+  const confetti = () => {
+    if (calm) return;
+    const host = W.el.querySelector('.wz-done'), cv = document.createElement('canvas'), D = 2;
+    cv.className = 'wz-confetti'; cv.width = 393 * D; cv.height = 852 * D; host.prepend(cv);
+    const c = cv.getContext('2d'); c.scale(D, D);
+    const COL = ['#2b6cfc', '#5b8cff', '#9db8ff', '#1d4fd8', '#c9d8ff'], T = 1.9;
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;   // одинаково при каждом показе и в ролике
+    const P = Array.from({ length: 44 }, (_, i) => {
+      const left = i % 2 === 0, a = ((left ? -58 : -122) + (rnd() - 0.5) * 46) * Math.PI / 180, sp = 360 + rnd() * 340;
+      return { x: left ? 6 : 387, y: 60 + rnd() * 24, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: rnd() * 6.3, vr: (rnd() - 0.5) * 14,
+        w: 3 + rnd() * 3.5, h: 6 + rnd() * 5, dot: rnd() < 0.3, col: COL[i % COL.length], ph: rnd() * 6.3 };
+    });
+    let t = 0, prev = 0;
+    const step = (now) => {
+      const dt = prev ? Math.min(0.034, (now - prev) / 1000) / SLOW : 1 / 60; prev = now; t += dt;
+      if (t > T || !cv.isConnected) { cv.remove(); return; }
+      c.clearRect(0, 0, 393, 852);
+      const alpha = t < 1.2 ? 0.9 : 0.9 * (1 - (t - 1.2) / (T - 1.2));
+      for (const q of P) {
+        q.vy += 900 * dt; q.vx *= 1 - 1.9 * dt; q.vy *= 1 - 1.3 * dt;
+        q.x += (q.vx + Math.sin(t * 7 + q.ph) * 26) * dt; q.y += q.vy * dt; q.r += q.vr * dt;
+        c.globalAlpha = alpha; c.fillStyle = q.col;
+        if (q.dot) { c.beginPath(); c.arc(q.x, q.y, 2.4, 0, 6.29); c.fill(); continue; }
+        c.save(); c.translate(q.x, q.y); c.rotate(q.r); c.scale(Math.cos(t * 9 + q.ph), 1); c.fillRect(-q.w / 2, -q.h / 2, q.w, q.h); c.restore();
+      }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   };
   // «Отлично»: анкета гаснет, под ней профиль; цели с картинки падают в свои медали «Мои цели», те заливаются.
   const settle = () => { profile.classList.add('set'); setState('set'); };

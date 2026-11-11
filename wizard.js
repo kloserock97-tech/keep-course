@@ -124,7 +124,7 @@
     el: wiz, goals: gs, steps: STEPS, segs, on,
     get step() { return cur; },
     next, go,
-    reset() { cur = 0; wiz.className = 'wiz'; segs.forEach((s) => s.classList.remove('wait')); wiz.querySelector('.wz-bar').classList.remove('gone'); paint(); },
+    reset() { cur = 0; wiz.className = 'wiz'; segs.forEach((s) => s.classList.remove('wait', 'ink')); wiz.querySelector('.wz-bar').classList.remove('gone'); paint(); },
   };
   window.Wizard.reset();
 })();

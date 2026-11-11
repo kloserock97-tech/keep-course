@@ -12,7 +12,7 @@ const FPS = 30;
 const SECONDS = 14.9;     // профиль → шторка → покой с намёком → «Продолжить» → цели в полоску шагов → анкета → финал → медали → «Цели»
 const DOWN_AT = 4.5, UP_AT = 4.9;
 // нажатия по ходу ролика: [секунда, селектор]
-const TAPS = [6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0].map((t) => [t, '#wz-next']).concat([[12.2, '#wz-done'], [14.1, '#goals']]);
+const TAPS = [6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0].map((t) => [t, '#wz-next']).concat([[12.6, '#wz-done'], [14.2, '#goals']]);
 
 (async () => {
   fs.rmSync(FRAMES, { recursive: true, force: true });
