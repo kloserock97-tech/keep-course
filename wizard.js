@@ -60,6 +60,10 @@
     <div class="gcard"><h4><img src="${ICON('walk')}" alt="">Шаги</h4><div class="v"><span data-v="steps">${nb(val.steps)}</span></div></div>
     <div class="gcard"><h4><img src="${ICON('sleep')}" alt="">Сон</h4><div class="v"><span data-v="sleep">8</span><small>ч</small></div></div>
     <div class="gcard"><h4><img src="${ICON('water')}" alt="">Вода</h4><div class="v"><span data-v="water">${dec(val.water)}</span><small>л</small></div></div>`;
+  // на экране успеха — компактная сетка 3 × 2: всё помещается на один экран, без прокрутки
+  const TILES = [['scales', 'Вес', 'weight', 'кг'], ['meal', 'Питание', 'kcal', 'ккал'], ['fire', 'Активность', 'burn', 'ккал'], ['walk', 'Шаги', 'steps', ''], ['sleep', 'Сон', 'sleep', 'ч'], ['water', 'Вода', 'water', 'л']];
+  const fmtV = (k, v) => (k === 'water' ? dec(v) : k === 'sleep' ? String(Math.round(v * 2) / 2).replace('.5', ',5') : nb(Math.round(v)));
+  const tilesHTML = () => TILES.map(([ic, name, k, unit], i) => `<div class="gtile" style="--i:${i}"><span class="gt-name"><img src="${ICON(ic)}" alt="">${name}</span><b><span data-v="${k}">${fmtV(k, val[k])}</span>${unit ? `<small>${unit}</small>` : ''}</b></div>`).join('');
 
   // ---------- разметка ----------
   const wiz = document.createElement('section');
@@ -73,9 +77,9 @@
     <div class="wz-done">
       <button class="wz-x" type="button" id="wz-x" aria-label="Закрыть">${CROSS}</button>
       <div class="wz-art" aria-hidden="true"></div>
-      <h2 class="wz-title rise"><span>Ваши ежедневные</span><span>цели настроены</span></h2>
-      <p class="rise">Все выбранные ориентиры сохранены как цели. По ним приложение будет помогать следить за прогрессом и подбирать рекомендации.<br><br>Посмотреть или изменить их можно в профиле в разделе «Мои цели»</p>
-      <div class="goal-cards rise">${cardsHTML()}</div>
+      <h2 class="wz-title"><span>Ваши ежедневные</span><span>цели настроены</span></h2>
+      <p class="rise">Все выбранные ориентиры сохранены как цели. По ним приложение будет помогать следить за прогрессом и подбирать рекомендации. Посмотреть или изменить их можно в профиле в разделе «Мои цели»</p>
+      <div class="goal-tiles">${tilesHTML()}</div>
     </div>
     <div class="wz-done-foot"><button class="btn btn-primary" id="wz-done" type="button">Отлично</button></div>`;
   const fly = document.querySelector('.intro .fly');
@@ -120,7 +124,25 @@
     if (opt) opt.parentNode.querySelectorAll('.wz-opt').forEach((o) => o.classList.toggle('on', o === opt));
   });
 
+  // числа в карточках успеха досчитываются от нуля в тот миг, когда карточка встаёт на место
+  const countUp = (slow = 1) => {
+    const els = [...wiz.querySelectorAll('.goal-tiles [data-v]')];
+    let start = null;
+    const step = (now) => {
+      if (start === null) start = now;
+      let busy = false;
+      els.forEach((e, i) => {
+        const k = e.dataset.v, p = Math.min(1, Math.max(0, ((now - start) / slow - 360 - i * 70) / 700));
+        e.textContent = fmtV(k, val[k] * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) busy = true;
+      });
+      if (busy) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+
   window.Wizard = {
+    countUp,
     el: wiz, goals: gs, steps: STEPS, segs, on,
     get step() { return cur; },
     next, go,

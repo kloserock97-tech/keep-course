@@ -621,13 +621,13 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const BOWL_BOX = [113, 369, 296, 270];                       // миска целиком, с продуктами: для полёта в медаль
   const NEEDLE = { p: [776, 494], t: [799, 463] };
   const SHADOW = { bottle: [509, 386, 58, 10, 0], bowl: [262, 632, 90, 12, 0], scale: [757, 640, 110, 13, 13], dumbbell: [497, 806, 122, 15, 0] };   // тени под предметами: центр, радиусы, наклон
-  const SK = 296 / 915;                                       // пунктов на единицу картинки: кадр 915 × 955 → 296 × 309 pt
+  const SK = 250 / 915;                                       // пунктов на единицу картинки: кадр 915 × 955 → 250 × 261 pt
   const img = (k) => { const [x, y, w, h] = SL[k]; return `<image href="assets/success/l-${k}.webp" x="${x}" y="${y}" width="${w}" height="${h}"/>`; };
   const needlePath = (() => {                                  // стрелка сужается от оси к кончику
     const [px, py] = NEEDLE.p, [tx, ty] = NEEDLE.t, l = Math.hypot(tx - px, ty - py), nx = -(ty - py) / l, ny = (tx - px) / l, f = (v) => v.toFixed(1);
     return `M${f(px + nx * 3.4)} ${f(py + ny * 3.4)}L${f(tx + nx * 0.9)} ${f(ty + ny * 0.9)}L${f(tx - nx * 0.9)} ${f(ty - ny * 0.9)}L${f(px - nx * 3.4)} ${f(py - ny * 3.4)}Z`;
   })();
-  W.el.querySelector('.wz-art').innerHTML = `<svg viewBox="55 35 915 955" width="296" height="309" aria-hidden="true">
+  W.el.querySelector('.wz-art').innerHTML = `<svg viewBox="55 35 915 955" width="250" height="261" aria-hidden="true">
     <defs><filter id="sx-blur" x="-30%" y="-80%" width="160%" height="260%"><feGaussianBlur stdDeviation="7"/></filter></defs>
     <image class="sx-plate" href="assets/success/plate.webp" width="1024" height="1024"/>
     <g filter="url(#sx-blur)" fill="#1d2a55">${Object.entries(SHADOW).map(([k, [cx, cy, rx, ry, a]]) => `<ellipse class="sx-sh" data-k="${k}" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" transform="rotate(${a} ${cx} ${cy})" opacity="0"/>`).join('')}</g>
@@ -737,37 +737,38 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     later(() => weigh(-50), 200 + 330);                                            // весы сели — стрелка взвешивает
     later(bowlStir, 120 + 330);                                                    // миска села — продукты в ней качнулись
     later(confetti, 280 + 330);
-    later(() => W.el.classList.add('shown'), 420);
+    later(() => { W.el.classList.add('shown'); W.countUp(SLOW); }, 420);   // заголовок въезжает, карточки встают и досчитываются
     tricks(0, 1400);
     wake();
   };
 
-  // Конфетти на финале — как в продукте, но тише: только синие, один залп из верхних углов, 64 штуки на 2,2 с,
-  // и позади заголовка, текста и карточек — празднуют, но ничего не закрывают. При «уменьшить движение» их нет.
+  // Вместо конфетти — стикеры: маленькие наклейки с нашими же предметами (вода, гантель, весы, кроссовок, еда).
+  // Высыпаются сверху экрана, а не из углов, по одному с разбросом, кружатся и падают. Летят позади заголовка,
+  // текста и карточек: празднуют, но ничего не закрывают. При «уменьшить движение» их нет.
+  const STICKERS = ['bottle', 'dumbbell', 'avocado', 'shoe', 'scale', 'leaf', 'salmon', 'chickpeas', 'lettuce'].map((n) => { const im = new Image(); im.src = `assets/stickers/s-${n}.webp`; return im; });
   const confetti = () => {
     if (calm) return;
     const host = W.el.querySelector('.wz-done'), cv = document.createElement('canvas'), D = 2;
     cv.className = 'wz-confetti'; cv.width = 393 * D; cv.height = 852 * D; host.prepend(cv);
     const c = cv.getContext('2d'); c.scale(D, D);
-    const COL = ['#2b6cfc', '#5b8cff', '#9db8ff', '#1d4fd8', '#c9d8ff'], T = 2.2;
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;   // одинаково при каждом показе и в ролике
-    const P = Array.from({ length: 64 }, (_, i) => {
-      const left = i % 2 === 0, a = ((left ? -58 : -122) + (rnd() - 0.5) * 46) * Math.PI / 180, sp = 360 + rnd() * 340;
-      return { x: left ? 6 : 387, y: 60 + rnd() * 24, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: rnd() * 6.3, vr: (rnd() - 0.5) * 14,
-        w: 3 + rnd() * 3.5, h: 6 + rnd() * 5, dot: rnd() < 0.3, col: COL[i % COL.length], ph: rnd() * 6.3 };
-    });
+    const P = Array.from({ length: 18 }, (_, k) => ({
+      im: STICKERS[k % STICKERS.length], x: 24 + ((k * 7) % 18) / 17 * 345 + (rnd() - 0.5) * 16, y: -24 - rnd() * 20,
+      vx: (rnd() - 0.5) * 40, vy: 40 + rnd() * 70, r: (rnd() - 0.5) * 1.1, vr: (rnd() - 0.5) * 4.4,
+      size: 26 + rnd() * 8, wait: k * 0.055 + rnd() * 0.08, ph: rnd() * 6.3,
+    }));
     let t = 0, prev = 0;
     const step = (now) => {
       const dt = prev ? Math.min(0.034, (now - prev) / 1000) / SLOW : 1 / 60; prev = now; t += dt;
-      if (t > T || !cv.isConnected) { cv.remove(); return; }
+      if (t > 3.4 || !cv.isConnected) { cv.remove(); return; }
       c.clearRect(0, 0, 393, 852);
-      const alpha = t < 1.4 ? 0.95 : 0.95 * (1 - (t - 1.4) / (T - 1.4));
       for (const q of P) {
-        q.vy += 900 * dt; q.vx *= 1 - 1.9 * dt; q.vy *= 1 - 1.3 * dt;
-        q.x += (q.vx + Math.sin(t * 7 + q.ph) * 26) * dt; q.y += q.vy * dt; q.r += q.vr * dt;
-        c.globalAlpha = alpha; c.fillStyle = q.col;
-        if (q.dot) { c.beginPath(); c.arc(q.x, q.y, 2.4, 0, 6.29); c.fill(); continue; }
-        c.save(); c.translate(q.x, q.y); c.rotate(q.r); c.scale(Math.cos(t * 9 + q.ph), 1); c.fillRect(-q.w / 2, -q.h / 2, q.w, q.h); c.restore();
+        if (t < q.wait) continue;
+        q.vy += 620 * dt; q.vy *= 1 - 0.9 * dt; q.vx *= 1 - 0.8 * dt;          // тяжесть и сопротивление воздуха: падают как наклейки, а не камни
+        q.x += (q.vx + Math.sin(t * 3.2 + q.ph) * 22) * dt; q.y += q.vy * dt; q.r += q.vr * dt;
+        const a = Math.max(0, Math.min(1, (860 - q.y) / 260));                   // к низу экрана тают
+        if (a <= 0 || !q.im.complete) continue;
+        c.globalAlpha = a; c.save(); c.translate(q.x, q.y); c.rotate(q.r); c.drawImage(q.im, -q.size / 2, -q.size / 2, q.size, q.size); c.restore();
       }
       requestAnimationFrame(step);
     };
