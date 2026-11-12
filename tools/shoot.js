@@ -1,5 +1,6 @@
 // Покадровая запись ролика 9:16 с управляемым временем: node tools/shoot.js
 // Кадры → .shots/frames, ролик → media/motion.mp4. Весь путь: шторка → анкета → финал → медали → экран «Цели»
+// BARE=1 node tools/shoot.js — только экран без корпуса телефона (393 × 852) → media/motion-screen.mp4, для мокапа
 const puppeteer = require('puppeteer-core');
 const path = require('path');
 const fs = require('fs');
@@ -7,7 +8,9 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const FRAMES = path.join(ROOT, '.shots', 'frames');
-const URL = require('url').pathToFileURL(path.join(ROOT, 'index.html')).href;
+const BARE = !!process.env.BARE;
+const URL = require('url').pathToFileURL(path.join(ROOT, 'index.html')).href + (BARE ? '?bare' : '');
+const OUT = BARE ? 'motion-screen.mp4' : 'motion.mp4';
 const FPS = 30;
 const SECONDS = 14.9;     // профиль → шторка → покой с намёком → «Продолжить» → цели в полоску шагов → анкета → финал → медали → «Цели»
 const DOWN_AT = 4.3, UP_AT = 4.7;
@@ -22,7 +25,7 @@ const TAPS = [6.0, 6.4, 6.8, 7.2, 7.6, 8.0, 8.4, 8.8].map((t) => [t, '#wz-next']
     headless: 'new', args: ['--hide-scrollbars', '--allow-file-access-from-files'],
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 540, height: 960, deviceScaleFactor: 2 });
+  await page.setViewport(BARE ? { width: 393, height: 852, deviceScaleFactor: 3 } : { width: 540, height: 960, deviceScaleFactor: 2 });
   // своё время вместо настоящего: таймеры и все CSS-анимации двигаем вручную, кадр за кадром
   await page.evaluateOnNewDocument(() => {
     let now = 0, id = 0; const timers = new Map(); let rafs = [];
@@ -65,7 +68,7 @@ const TAPS = [6.0, 6.4, 6.8, 7.2, 7.6, 8.0, 8.4, 8.8].map((t) => [t, '#wz-next']
 
   fs.mkdirSync(path.join(ROOT, 'media'), { recursive: true });
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-framerate', String(FPS), '-i', path.join(FRAMES, 'f%04d.jpg'),
-    '-vf', 'scale=1080:1920:flags=lanczos', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '17',
-    '-movflags', '+faststart', path.join(ROOT, 'media', 'motion.mp4')]);
-  console.log('\nmedia/motion.mp4');
+    '-vf', BARE ? 'scale=1080:-2:flags=lanczos' : 'scale=1080:1920:flags=lanczos', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '17',
+    '-movflags', '+faststart', path.join(ROOT, 'media', OUT)]);
+  console.log('\nmedia/' + OUT);
 })();

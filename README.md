@@ -4,7 +4,8 @@
 
 - **Весь сценарий:** https://kloserock97-tech.github.io/keep-course/
 - **Сразу экран «Цели»:** https://kloserock97-tech.github.io/keep-course/?screen=goals
-- **Ролик первого экрана, 9:16, 15 с:** [media/motion.mp4](media/motion.mp4)
+- **Ролик, 9:16, 15 с:** https://kloserock97-tech.github.io/keep-course/media/motion.mp4
+- **Тот же ролик, только экран без корпуса (393 × 852, для мокапа):** https://kloserock97-tech.github.io/keep-course/media/motion-screen.mp4
 
 ## Экран 1. Ориентиры на каждый день
 
@@ -236,6 +237,7 @@
 ```
 npm i
 node tools/shoot.js   # покадровая запись ролика в media/motion.mp4
+BARE=1 node tools/shoot.js   # то же, только экран без корпуса → media/motion-screen.mp4
 DUMP=1 node tools/trace-art.js   # маски частей по отличию от фона → src-assets/layers/masks
 ML_DIR=<папка с нейросетями> node tools/layers.mjs   # слои: фон без предметов (LaMa), вырезка (ViTMatte)
 node tools/scene-layers.js # сцена из слоёв: assets/goals/scene.svg и вставка в index.html
