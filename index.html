@@ -8,7 +8,8 @@
 <link rel="preconnect" href="https://cdn-app.sberdevices.ru" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&text=0123456789:&display=swap" rel="stylesheet">
+<!-- шрифт только для цифр часов в статус-баре: не блокирует страницу (обычная ссылка держала все скрипты до ответа Google) -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&text=0123456789:&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* Шрифт макета подключён по ссылке владельца, файлов в проекте нет. Если не загрузился — Manrope. */
 @font-face { font-family: "SB Sans Display"; font-weight: 400; font-display: swap; src: url(https://cdn-app.sberdevices.ru/shared-static/0.0.0/fonts/SBSansDisplay.0.2.0/SBSansDisplay-Regular.woff2) format("woff2"); }
@@ -200,6 +201,10 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
   .goals-sub, .medal, .medal img, .art .world { transition-duration: 1ms !important; }
 }
 </style>
+<!-- самые тяжёлые картинки сцены — первыми: шторка ждёт их, прежде чем выехать -->
+<link rel="preload" href="assets/goals/plate.webp" as="image" fetchpriority="high">
+<link rel="preload" href="assets/goals/l-r-front.webp" as="image" fetchpriority="high">
+<link rel="preload" href="assets/goals/l-r-body.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="stats.css">
 <link rel="stylesheet" href="wizard.css">
 </head>
@@ -544,11 +549,34 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     if (calm) { jump(sy, OFF); draw(); return; }
     aim(sy, OFF, SPRING.away);
   };
+  // Первая загрузка. Шторка не выезжает, пока картинки сцены не скачаны и не разжаты: иначе по сети слои
+  // догружались прямо во время проявления, и сцена собиралась кусками. Всё, что нужно только в конце
+  // (экран успеха, шапка «Цели», стикеры), начинает грузиться после — и не отнимает канал у первых картинок.
+  const decoded = (src) => new Promise((done) => { const im = new Image(); im.onload = () => (im.decode ? im.decode() : Promise.resolve()).catch(() => {}).then(done); im.onerror = done; im.src = src; });
+  const loadLater = () => {
+    document.querySelectorAll('image[data-href]').forEach((e) => { e.setAttribute('href', e.dataset.href); e.removeAttribute('data-href'); });
+    STICKERS.forEach((im) => { if (!im.src) im.src = im.dataset.src; });
+  };
+  let ready = null;
+  const whenReady = () => {
+    if (ready) return ready;
+    const pics = Promise.all([...art.querySelectorAll('image')].map((e) => decoded(e.getAttribute('href'))));
+    // шрифт нужен тексту шторки, не картинке: после картинок ждём его не дольше 0,5 с, иначе стартуем с запасным
+    const fonts = Promise.race([document.fonts.ready, pics.then(() => new Promise((done) => setTimeout(done, 500)))]);
+    ready = Promise.race([Promise.all([pics, fonts]), new Promise((done) => setTimeout(done, 8000))])   // на совсем медленной сети не ждём дольше 8 с
+      .then(() => { document.body.classList.add('ready'); loadLater(); });
+    return ready;
+  };
+  let entering = 0;
   const enter = () => {
     reset(); window.Stats.reset(); setState('closed'); view('intro');
     draw();
-    if (calm) { open(); return; }
-    later(open, 260);                                      // сначала виден профиль, потом поднимается шторка
+    const me = ++entering;
+    whenReady().then(() => {
+      if (me !== entering) return;                          // пока грузилось, нажали «Сначала» — работает последний вход
+      if (calm) { open(); return; }
+      later(open, 260);                                     // сначала виден профиль, потом поднимается шторка
+    });
   };
 
   // Палец на «Продолжить»: цели чуть вырастают, бегун встаёт «на старт», кнопка проседает. Увёл палец — всё назад.
@@ -622,14 +650,14 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   const NEEDLE = { p: [776, 494], t: [799, 463] };
   const SHADOW = { bottle: [509, 386, 58, 10, 0], bowl: [262, 632, 90, 12, 0], scale: [757, 640, 110, 13, 13], dumbbell: [497, 806, 122, 15, 0] };   // тени под предметами: центр, радиусы, наклон
   const SK = 250 / 915;                                       // пунктов на единицу картинки: кадр 915 × 955 → 250 × 261 pt
-  const img = (k) => { const [x, y, w, h] = SL[k]; return `<image href="assets/success/l-${k}.webp" x="${x}" y="${y}" width="${w}" height="${h}"/>`; };
+  const img = (k) => { const [x, y, w, h] = SL[k]; return `<image data-href="assets/success/l-${k}.webp" x="${x}" y="${y}" width="${w}" height="${h}"/>`; };
   const needlePath = (() => {                                  // стрелка сужается от оси к кончику
     const [px, py] = NEEDLE.p, [tx, ty] = NEEDLE.t, l = Math.hypot(tx - px, ty - py), nx = -(ty - py) / l, ny = (tx - px) / l, f = (v) => v.toFixed(1);
     return `M${f(px + nx * 3.4)} ${f(py + ny * 3.4)}L${f(tx + nx * 0.9)} ${f(ty + ny * 0.9)}L${f(tx - nx * 0.9)} ${f(ty - ny * 0.9)}L${f(px - nx * 3.4)} ${f(py - ny * 3.4)}Z`;
   })();
   W.el.querySelector('.wz-art').innerHTML = `<svg viewBox="55 35 915 955" width="250" height="261" aria-hidden="true">
     <defs><filter id="sx-blur" x="-30%" y="-80%" width="160%" height="260%"><feGaussianBlur stdDeviation="7"/></filter></defs>
-    <image class="sx-plate" href="assets/success/plate.webp" width="1024" height="1024"/>
+    <image class="sx-plate" data-href="assets/success/plate.webp" width="1024" height="1024"/>
     <g filter="url(#sx-blur)" fill="#1d2a55">${Object.entries(SHADOW).map(([k, [cx, cy, rx, ry, a]]) => `<ellipse class="sx-sh" data-k="${k}" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" transform="rotate(${a} ${cx} ${cy})" opacity="0"/>`).join('')}</g>
     <g class="sx" data-k="leaf">${img('leaf')}</g><g class="sx" data-k="bottle">${img('bottle')}</g>
     <g class="sx" data-k="bowl">${img('bowl')}<g class="sx" data-k="lettuce">${img('lettuce')}</g><g class="sx" data-k="salmon">${img('salmon')}</g><g class="sx" data-k="avocado">${img('avocado')}</g><g class="sx" data-k="chickpeas">${img('chickpeas')}</g>${img('bowl-front')}</g>
@@ -641,7 +669,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   W.el.querySelectorAll('.sx-sh').forEach((e) => { SX[e.dataset.k].sh = e; });
   // шапка экрана «Цели» — та же картинка, что в продукте (tools/goals-header.mjs): со скриншота, без заголовка и иконок.
   // Полоса скриншота 92–344 px при 1,5× → 61,3–229,3 pt; заголовок «Цели» и кнопки на экране свои, поверх неё
-  W.goals.querySelector('.gs-art').innerHTML = '<image href="assets/success/goals-header.webp" x="0" y="61.3" width="393" height="168"/>';
+  W.goals.querySelector('.gs-art').innerHTML = '<image data-href="assets/success/goals-header.webp" x="0" y="61.3" width="393" height="168"/>';
 
   // Движение предметов — по времени, а не на пружинах: у каждого трюка своя короткая траектория.
   // p — доля трюка от 0 до 1. Возвращает сдвиг, поворот и сжатие; всё считается от точки опоры (низ предмета).
@@ -742,7 +770,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   // Вместо конфетти — стикеры: маленькие наклейки с нашими же предметами (вода, гантель, весы, кроссовок, еда).
   // Высыпаются сверху экрана, а не из углов, по одному с разбросом, кружатся и падают. Летят позади заголовка,
   // текста и карточек: празднуют, но ничего не закрывают. При «уменьшить движение» их нет.
-  const STICKERS = ['bottle', 'dumbbell', 'avocado', 'shoe', 'scale', 'leaf', 'salmon', 'chickpeas', 'lettuce'].map((n) => { const im = new Image(); im.src = `assets/stickers/s-${n}.webp`; return im; });
+  const STICKERS = ['bottle', 'dumbbell', 'avocado', 'shoe', 'scale', 'leaf', 'salmon', 'chickpeas', 'lettuce'].map((n) => { const im = new Image(); im.dataset.src = `assets/stickers/s-${n}.webp`; return im; });   // адрес — в loadLater
   const confetti = () => {
     if (calm) return;
     const host = W.el.querySelector('.wz-done'), cv = document.createElement('canvas'), D = 2;
@@ -825,6 +853,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   document.getElementById('stats').addEventListener('click', (e) => { if (e.target.closest('img[alt="Профиль"]')) view('intro'); });
   $('#replay').addEventListener('click', enter);
 
+  whenReady();                                              // при любой ссылке: сначала картинки сцены, потом остальное
   if (params.get('screen') === 'stats' || params.get('screen') === 'goals') { reset(); profile.classList.add('set'); Object.values(medals).forEach((m) => m.el.classList.add('on')); setState('set'); draw(); view(params.get('screen')); }
   else if (params.has('hold')) { reset(); setState('open'); jump(sy, 0); idle = MOCK ? 0 : 1; draw(); if (!MOCK) { wake(); hintOn(); } }
   else enter();

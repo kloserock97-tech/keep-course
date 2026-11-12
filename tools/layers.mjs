@@ -108,7 +108,7 @@ for (const k of [...GOALS, 'runner']) { const h = holeOf(k); const r = await fil
   const out = Buffer.alloc(N * 3);
   for (let i = 0; i < N; i++) { const a = holeAll[i] ? 1 : edge[i] / 255; for (let c = 0; c < 3; c++) out[i * 3 + c] = Math.round(rgb[i * 3 + c] * (1 - a) + plate[i * 3 + c] * a); }
   for (let i = 0; i < N * 3; i++) plate[i] = out[i];
-  await sharp(out, { raw: { width: W, height: W, channels: 3 } }).webp({ quality: 90 }).toFile(path.join(OUT, 'plate.webp'));
+  await sharp(out, { raw: { width: W, height: W, channels: 3 } }).webp({ quality: 80, effort: 6 }).toFile(path.join(OUT, 'plate.webp'));
   await sharp(out, { raw: { width: W, height: W, channels: 3 } }).png().toFile(path.join(ROOT, '.shots', 'plate.png'));
 }
 
@@ -126,7 +126,7 @@ const save = async (name, a) => {
     for (let c = 0; c < 3; c++) { let v = rgb[i * 3 + c]; if (al > 0.02 && al < 0.98) v = (v - (1 - al) * plate[i * 3 + c]) / Math.max(al, 0.3); buf[j + c] = Math.max(0, Math.min(255, Math.round(v))); }
     buf[j + 3] = Math.round(al * 255);
   }
-  await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).webp({ quality: 92, alphaQuality: 100 }).toFile(path.join(OUT, 'l-' + name + '.webp'));
+  await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).webp({ quality: 80, alphaQuality: 85, effort: 6 }).toFile(path.join(OUT, 'l-' + name + '.webp'));
   layers[name] = { x: x0, y: y0, w, h };
 };
 for (const g of GOALS.filter((g) => g !== 'flag')) await save(g, alpha[g]);
