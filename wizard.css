@@ -7,6 +7,9 @@
   pointer-events: none;      /* закрытая анкета не ловит нажатия: текущий шаг внутри неё видим сам по себе */
 }
 .wiz.on { visibility: visible; opacity: 1; transition: opacity 340ms ease; pointer-events: auto; }
+/* закрытие полноэкранной модалки, как в iOS: она уезжает вниз и открывает профиль под собой */
+.wiz.on.away { transform: translateY(100%); transition: transform 460ms var(--ease-drawer); pointer-events: none; }
+.wiz.away { transform: translateY(100%); }                   /* уехала — так и остаётся внизу, пока анкету не откроют снова */
 .wiz .time { color: #222; }
 .wz-status { position: absolute; inset: 0 0 auto 0; height: 54px; }
 .wz-nav { position: absolute; z-index: 3; top: 64px; left: 24px; right: 24px; height: 24px; display: flex; justify-content: space-between; }
@@ -96,7 +99,7 @@
 .wz-done::-webkit-scrollbar { display: none; }
 .wiz.final .wz-done { visibility: visible; opacity: 1; transition: opacity 300ms ease; }
 .wz-done .wz-x { position: absolute; top: 64px; right: 24px; }
-.wz-art { position: relative; z-index: 1; width: 250px; height: 261px; margin: 46px auto -20px; }
+.wz-art { position: relative; z-index: 1; width: 250px; height: 261px; margin: 98px auto -20px; }   /* ниже ряда с крестиком: картинка не прижата к статус-бару */
 .wz-art .sx-plate { transition: opacity 300ms ease 60ms; }   /* фон чуть позже предметов: пустые места под ними не успевают показаться */
 /* конфетти — позади заголовка, текста и карточек: празднуют, но не закрывают прочитанное */
 .wz-confetti { position: absolute; left: 0; top: 0; width: 393px; height: 852px; pointer-events: none; z-index: 0; }
@@ -109,7 +112,7 @@
 .wz-art .piece.land .pop { animation: wz-land 460ms var(--ease-out); }
 @keyframes wz-land { 0% { transform: scale(1.14, .84); } 40% { transform: scale(.95, 1.06); } 100% { transform: none; } }
 .wz-title { display: flex; flex-direction: column; align-items: center; margin-top: 4px; }
-.wz-title span { padding: 2px 12px 4px; border-radius: 12px; background: var(--blue); color: #fff; font-size: 26px; font-weight: 600; line-height: 34px; }
+.wz-title span { padding: 2px 12px 4px; border-radius: 12px; background: #e1e9fd; color: #1f3d94; font-size: 26px; font-weight: 600; line-height: 34px; }   /* приглушено: насыщенный синий — только у кнопки */
 .wz-title span + span { margin: -4px 0 0 64px; }
 /* заголовок въезжает плашками с разных сторон и чуть перелетает: первая строка слева, вторая справа */
 .wz-done .wz-title span { opacity: 0; transform: translateX(-120%) rotate(-4deg); transition: transform 560ms cubic-bezier(.2, 1.3, .4, 1), opacity 200ms ease; }

@@ -777,6 +777,8 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   // «Отлично»: анкета гаснет, под ней профиль; предметы с картинки падают в свои медали «Мои цели», те заливаются.
   // Шагам и сну на картинке предметов нет — их медали заливаются в свой черёд без полёта.
   const settle = () => { profile.classList.add('set'); setState('set'); };
+  // полноэкранная модалка закрывается как в iOS: уезжает вниз и открывает профиль
+  const slideAway = () => { W.el.classList.add('away'); later(() => W.el.classList.remove('on'), 480); };
   W.on.done = () => {
     if (state !== 'final') return;
     setState('landing');
@@ -795,12 +797,12 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
       });
     });
     ['walk', 'sleep'].forEach((k) => later(() => { medals[k].el.classList.add('on'); kick(medals[k].s, 2.4, SPRING.medal); }, 520 + MEDALS.indexOf(k) * 40));
-    W.el.classList.remove('on');
+    slideAway();
   };
   // Закрыли анкету, не дойдя до конца: цели ещё не настроены, медали пустые.
   W.on.close = () => {
     if (state !== 'wizard') return;
-    W.el.classList.remove('on'); setState('closed');
+    slideAway(); setState('closed');
     goals.forEach((g) => { g.el.style.visibility = ''; });
     Object.values(rig).forEach((r) => jump(r, 0));
     art.classList.remove('lift'); draw();
