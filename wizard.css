@@ -136,16 +136,16 @@
 .wiz.final.shown .wz-done-foot { visibility: visible; opacity: 1; }
 
 /* карточки целей: на финале анкеты и на экране «Цели» */
-.goal-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; }
+.goal-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; text-align: left; }   /* размеры — по скриншоту экрана «Цели» из продукта */
 .gcard { padding: 16px; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1px #dee8ff; }
 .gcard.wide { grid-column: 1 / -1; }
 .gcard h4 { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; line-height: 22px; }
 .gcard h4 img, .wz-head h2 img { width: 20px; height: 20px; opacity: .45; }   /* в продукте значки здесь бледные */
-.gcard .v { margin-top: 18px; font-size: 40px; font-weight: 600; line-height: 44px; font-feature-settings: "lnum" 1, "tnum" 1; }
-.gcard .v small { margin-left: 4px; font-size: 16px; font-weight: 400; color: #8a8f99; }
-.gcard .bju { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 16px; font-size: 16px; line-height: 22px; }
+.gcard .v { margin-top: 10px; font-size: 32px; font-weight: 600; line-height: 38px; font-feature-settings: "lnum" 1, "tnum" 1; }
+.gcard .v small { margin-left: 3px; font-size: 14px; font-weight: 400; color: #8a8f99; }
+.gcard .bju { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 10px; font-size: 14px; line-height: 18px; }
 .gcard .bju i { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; }
-.gcard .bju b { display: block; margin-top: 10px; font-size: 18px; font-weight: 600; }
+.gcard .bju b { display: block; margin-top: 6px; font-size: 16px; font-weight: 600; }
 .gcard .bju b small { margin-left: 2px; font-size: 13px; font-weight: 400; color: #8a8f99; }
 
 /* ---------- Экран «Цели» из профиля ---------- */
@@ -158,11 +158,11 @@
 .screen[data-view="goals"] .intro { transform: translateX(-28%); opacity: 0; }
 .gs-scroll { position: absolute; inset: 0; overflow-y: auto; scrollbar-width: none; padding: 0 16px 108px; background: linear-gradient(180deg, #fff 0%, #f1f7ff 45%, #e4f2fb 75%, #eaf6e9 100%); }
 .gs-scroll::-webkit-scrollbar { display: none; }
-.gs-top { position: relative; height: 236px; margin: 0 -16px; overflow: hidden; }
+.gs-top { position: relative; height: 228px; margin: 0 -16px; overflow: hidden; }
 .gs-top > .gs-art { position: absolute; left: 0; top: 0; }
 .gs-top h2 { position: absolute; left: 0; right: 0; top: 136px; text-align: center; font-size: 34px; font-weight: 600; line-height: 40px; }
 .gs-top .wz-nav { top: 64px; }
-.goalscr .goal-cards { margin-top: 4px; }
+.goalscr .goal-cards { margin-top: 2px; }
 .goalscr .p-tabbar { z-index: 3; }
 
 @media (prefers-reduced-motion: reduce) {

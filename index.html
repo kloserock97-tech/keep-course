@@ -639,12 +639,9 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
     return [k, { el, k, bb: { x, y, width: w, height: h }, bx: x + w / 2, by: y + h, cx: x + w / 2, cy: y + h / 2, td: null, tr: null }]; }));
   const needle = W.el.querySelector('.sx-needle'), sxPlate = W.el.querySelector('.sx-plate');
   W.el.querySelectorAll('.sx-sh').forEach((e) => { SX[e.dataset.k].sh = e; });
-  // шапка экрана «Цели» — те же предметы, неподвижно
-  W.goals.querySelector('.gs-art').innerHTML = (() => { const at = (k, x, y, sc = 0.3) => { const [, , w, h] = SL[k]; return `<image href="assets/success/l-${k}.webp" x="${x}" y="${y}" width="${(w * sc).toFixed(1)}" height="${(h * sc).toFixed(1)}"/>`; };
-    // предметы по бокам заголовка и ниже кнопок «Назад» и «i»
-    const bowl = `<g transform="translate(286 156) scale(0.3) translate(${-BOWL_BOX[0]} ${-BOWL_BOX[1]})">${['bowl', 'lettuce', 'salmon', 'avocado', 'chickpeas', 'bowl-front'].map(img).join('')}</g>`;
-    return at('scale', 6, 104) + at('dumbbell', 40, 182) + at('leaf', 112, 98) + at('bottle', 334, 96) + bowl +
-      `<path d="${needlePath}" fill="#3466d6" transform="translate(${(6 - 634 * 0.3).toFixed(1)} ${(104 - 406 * 0.3).toFixed(1)}) scale(0.3)"/>`; })();
+  // шапка экрана «Цели» — та же картинка, что в продукте (tools/goals-header.mjs): со скриншота, без заголовка и иконок.
+  // Полоса скриншота 92–344 px при 1,5× → 61,3–229,3 pt; заголовок «Цели» и кнопки на экране свои, поверх неё
+  W.goals.querySelector('.gs-art').innerHTML = '<image href="assets/success/goals-header.webp" x="0" y="61.3" width="393" height="168"/>';
 
   // Движение предметов — по времени, а не на пружинах: у каждого трюка своя короткая траектория.
   // p — доля трюка от 0 до 1. Возвращает сдвиг, поворот и сжатие; всё считается от точки опоры (низ предмета).
