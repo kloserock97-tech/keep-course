@@ -92,7 +92,7 @@
       <div class="wz-status header" style="background:none">${STATUS}</div>
       <div class="wz-nav"><button type="button" id="gs-back" aria-label="Назад">${CHEV}</button><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="#2b6cfc" stroke-width="1.8"/><path d="M12 10.5v6" stroke="#2b6cfc" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.1" fill="#2b6cfc"/></svg></div>
       <h2>Цели</h2></div><div class="goal-cards">${cardsHTML()}</div></div>
-    <nav class="p-tabbar" aria-label="Разделы">${document.querySelector('.profile .p-tabbar').innerHTML.replace('id="tab-stats"', 'id="gs-tab-stats"')}</nav>`;
+    <nav class="p-tabbar" aria-label="Разделы">${document.querySelector('.profile .p-tabbar').innerHTML}</nav>`;
   document.querySelector('.screen').appendChild(gs);
 
   // ---------- поведение ----------

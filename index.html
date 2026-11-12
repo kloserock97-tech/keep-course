@@ -258,7 +258,7 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
             <div class="group"><h3>Настройки</h3></div>
           </div>
           <nav class="p-tabbar" aria-label="Разделы">
-            <button type="button" class="side" id="tab-stats"><img src="assets/goals/tab-chart.svg" alt="Статистика" width="32" height="32"></button>
+            <img class="side" src="assets/goals/tab-chart.svg" alt="" width="32" height="32">
             <img src="assets/goals/tab-ai.svg" alt="" width="44" height="44">
             <img class="side" src="assets/goals/tab-profile.svg" alt="Профиль" width="32" height="32">
           </nav>
@@ -296,7 +296,6 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
         <div class="fly" aria-hidden="true"></div>
         <div class="home" aria-hidden="true"></div>
       </div>
-      <section class="stats" id="stats" aria-label="Статистика"></section>
     </main>
   </div>
 </div>
@@ -306,7 +305,6 @@ html.sb h1 { position: relative; top: -1px; }                         /* бра�
 // шрифт макета загрузился — помечаем, чтобы отключить подгонку под запасной
 document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.length) document.documentElement.classList.add('sb'); }).catch(() => {});
 </script>
-<script src="stats.js"></script>
 <script src="wizard.js"></script>
 <script>
 (() => {
@@ -569,7 +567,7 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   };
   let entering = 0;
   const enter = () => {
-    reset(); window.Stats.reset(); setState('closed'); view('intro');
+    reset(); setState('closed'); view('intro');
     draw();
     const me = ++entering;
     whenReady().then(() => {
@@ -848,13 +846,10 @@ document.fonts.load('600 16px "SB Sans Display"', 'Ая1').then((f) => { if (f.l
   dim.addEventListener('click', close);
   $('#goals').addEventListener('click', () => { if (state === 'set') view('goals'); else if (state === 'closed') open(); });
   $('#gs-back').addEventListener('click', () => view('intro'));
-  $('#gs-tab-stats').addEventListener('click', () => view('stats'));
-  $('#tab-stats').addEventListener('click', () => view('stats'));
-  document.getElementById('stats').addEventListener('click', (e) => { if (e.target.closest('img[alt="Профиль"]')) view('intro'); });
   $('#replay').addEventListener('click', enter);
 
   whenReady();                                              // при любой ссылке: сначала картинки сцены, потом остальное
-  if (params.get('screen') === 'stats' || params.get('screen') === 'goals') { reset(); profile.classList.add('set'); Object.values(medals).forEach((m) => m.el.classList.add('on')); setState('set'); draw(); view(params.get('screen')); }
+  if (params.get('screen') === 'goals') { reset(); profile.classList.add('set'); Object.values(medals).forEach((m) => m.el.classList.add('on')); setState('set'); draw(); view(params.get('screen')); }
   else if (params.has('hold')) { reset(); setState('open'); jump(sy, 0); idle = MOCK ? 0 : 1; draw(); if (!MOCK) { wake(); hintOn(); } }
   else enter();
   window.__motion = { sy, btn, road, stride, goals, medals, rig, state: () => state, finish, flights: () => flights.length };
